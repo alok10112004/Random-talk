@@ -3,33 +3,27 @@ import { useRef, useCallback } from 'react';
 // ============================================
 // METERED.CA TURN SERVER CONFIG
 // ============================================
-// Password REVEAL karo dashboard se aur yahan daalo
 const TURN_USERNAME = '7f3c95826ffbde8af6338539';
-const TURN_PASSWORD = 'B3jr4blV1TLmiV1/';
+const TURN_PASSWORD = 'B3jr4blV1TLmiV1/'; // 👈 Yahan apna password daalo
 
 const ICE_SERVERS = {
   iceServers: [
-    // STUN
     { urls: 'stun:stun.relay.metered.ca:80' },
-    // TURN — UDP
     {
       urls: 'turn:global.relay.metered.ca:80',
       username: TURN_USERNAME,
       credential: TURN_PASSWORD,
     },
-    // TURN — TCP
     {
       urls: 'turn:global.relay.metered.ca:80?transport=tcp',
       username: TURN_USERNAME,
       credential: TURN_PASSWORD,
     },
-    // TURN — TLS
     {
       urls: 'turn:global.relay.metered.ca:443',
       username: TURN_USERNAME,
       credential: TURN_PASSWORD,
     },
-    // TURN — TLS over TCP
     {
       urls: 'turns:global.relay.metered.ca:443?transport=tcp',
       username: TURN_USERNAME,
@@ -46,32 +40,23 @@ export function useWebRTC(socket) {
   const roomIdRef = useRef(null);
 
   const cleanup = useCallback(() => {
-    console.log('🧹 Cleanup started');
-
     if (pcRef.current) {
       try {
         pcRef.current.ontrack = null;
         pcRef.current.onicecandidate = null;
         pcRef.current.onconnectionstatechange = null;
         pcRef.current.close();
-      } catch (e) {
-        console.warn('PC close error:', e);
-      }
+      } catch (e) {}
       pcRef.current = null;
     }
-
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => {
-        try {
-          t.stop();
-        } catch (e) {}
+        try { t.stop(); } catch (e) {}
       });
       localStreamRef.current = null;
     }
-
     remoteStreamRef.current = null;
     roomIdRef.current = null;
-    console.log('🧹 Cleanup done');
   }, []);
 
   const createPeer = useCallback(
@@ -89,7 +74,6 @@ export function useWebRTC(socket) {
       };
 
       pc.ontrack = (e) => {
-        console.log('🎥 Remote track received:', e.track.kind);
         remoteStreamRef.current = e.streams[0];
         onRemoteStream?.(e.streams[0]);
       };
@@ -98,13 +82,26 @@ export function useWebRTC(socket) {
         console.log('📡 PC state:', pc.connectionState);
       };
 
-      pc.oniceconnectionstatechange = () => {
-        console.log('🧊 ICE state:', pc.iceConnectionState);
-      };
-
-      pc.onicegatheringstatechange = () => {
-        console.log('❄️ ICE gathering:', pc.iceGatheringState);
-      };
+      // 👇 FORCE HIGH QUALITY BITRATE
+      setTimeout(() => {
+        try {
+          const senders = pc.getSenders();
+          senders.forEach((sender) => {
+            if (sender.track && sender.track.kind === 'video') {
+              const params = sender.getParameters();
+              if (!params.encodings) params.encodings = [{}];
+              // 1.5 Mbps force karo (HD quality ke liye)
+              params.encodings[0].maxBitrate = 1500000;
+              // Kabhi kabhi 2 Mbps tak allow karo
+              params.encodings[0].maxFramerate = 30;
+              sender.setParameters(params);
+              console.log('🎥 Video bitrate forced to 1.5 Mbps');
+            }
+          });
+        } catch (err) {
+          console.warn('Bitrate force error:', err);
+        }
+      }, 1000); // 1 sec delay taaki connection set ho jaye
 
       return pc;
     },
@@ -112,20 +109,16 @@ export function useWebRTC(socket) {
   );
 
   const startLocalStream = useCallback(async () => {
-    console.log('📹 Requesting camera + mic...');
-
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error(
-        'Camera not supported. HTTPS ya localhost chahiye.'
-      );
+      throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          frameRate: { ideal: 30, min: 15 },
+          width: { ideal: 1280, max: 1920 }, // High resolution
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 60 },
           facingMode: 'user',
         },
         audio: {
@@ -136,43 +129,20 @@ export function useWebRTC(socket) {
         },
       });
 
-      const videoTrack = stream.getVideoTracks()[0];
-      const settings = videoTrack?.getSettings();
-
-      console.log('✅ Camera got:', {
-        width: settings?.width,
-        height: settings?.height,
-        frameRate: settings?.frameRate,
-        device: videoTrack?.label,
-      });
-
       localStreamRef.current = stream;
       return stream;
     } catch (err) {
       console.error('❌ getUserMedia error:', err.name, err.message);
-
       let msg = 'Camera access failed. ';
       switch (err.name) {
         case 'NotAllowedError':
-        case 'PermissionDeniedError':
-          msg += 'Please allow camera & microphone in browser settings.';
+          msg += 'Please allow camera & microphone.';
           break;
         case 'NotFoundError':
-        case 'DevicesNotFoundError':
-          msg += 'No camera or microphone found on your device.';
+          msg += 'No camera or microphone found.';
           break;
         case 'NotReadableError':
-        case 'TrackStartError':
-          msg += 'Camera is already in use by another app (Zoom, Meet, etc).';
-          break;
-        case 'OverconstrainedError':
-          msg += 'Camera does not support requested settings.';
-          break;
-        case 'SecurityError':
-          msg += 'HTTPS required for camera access.';
-          break;
-        case 'AbortError':
-          msg += 'Camera access was aborted.';
+          msg += 'Camera is already in use by another app.';
           break;
         default:
           msg += err.message || 'Unknown error.';
@@ -184,16 +154,11 @@ export function useWebRTC(socket) {
   const handleSignal = useCallback(
     async (data) => {
       const pc = pcRef.current;
-      if (!pc) {
-        console.warn('⚠️ No PC for signal');
-        return;
-      }
+      if (!pc) return;
 
       try {
         if (data.sdp) {
-          console.log('📨 Received SDP:', data.sdp.type);
           await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-
           if (data.sdp.type === 'offer') {
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
@@ -201,7 +166,6 @@ export function useWebRTC(socket) {
               roomId: roomIdRef.current,
               data: { sdp: pc.localDescription },
             });
-            console.log('📤 Sent SDP answer');
           }
         } else if (data.candidate) {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
@@ -227,7 +191,6 @@ export function useWebRTC(socket) {
         roomId: roomIdRef.current,
         data: { sdp: pc.localDescription },
       });
-      console.log('📤 Sent SDP offer');
     } catch (err) {
       console.error('❌ makeOffer error:', err);
     }
