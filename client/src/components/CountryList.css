@@ -1,0 +1,90 @@
+.country-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.country-title {
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.country-search {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 20px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: 0.15s;
+}
+
+.country-search:focus {
+  border-color: #6ea889;
+}
+
+/* 5-column grid */
+.country-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px 8px;
+}
+
+.country-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.country-item:hover {
+  background: #f0f0f0;
+}
+
+.country-item.selected {
+  background: #6ea889;
+  color: #fff;
+  font-weight: 500;
+}
+
+.country-flag-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.country-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .country-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .country-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
