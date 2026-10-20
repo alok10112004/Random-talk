@@ -1775,7 +1775,7 @@ body {
 /* ============ MOBILE VIDEO LAYOUT FIX ============ */
 @media (max-width: 768px) {
   .chat-videos {
-    flex-direction: column !important; 
+   flex-direction: column-reverse !important; 
     gap: 8px !important;
     height: 100% !important;
   }
