@@ -1079,6 +1079,129 @@ body {
     width: 100%;
   }
 }
+/* ============ LANDING INTERESTS & CHECKBOX FIX ============ */
+.interest-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.interest-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  border-radius: 999px;
+  color: #e9d5ff;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.interest-tag-remove {
+  background: none;
+  border: none;
+  color: #c084fc;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  font-weight: 700;
+}
+
+.interest-tag-remove:hover { color: #fff; }
+
+.landing-add-btn {
+  padding: 16px 24px;
+  background: rgba(31, 37, 52, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 12px;
+  color: #c084fc;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.landing-add-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: #a855f7;
+  color: #fff;
+}
+
+.landing-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+/* Terms Checkbox */
+.landing-terms-check {
+  margin: 20px 0;
+  padding: 16px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 14px;
+}
+
+.landing-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.landing-checkbox {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  accent-color: #a855f7;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.landing-checkbox-text {
+  font-size: 14px;
+  color: #e5e7eb;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* Start Video Chat Button */
+.landing-btn-full {
+  width: 100%;
+  padding: 18px 36px;
+  font-size: 18px;
+  font-weight: 800;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  box-shadow: 0 10px 30px rgba(168, 85, 247, 0.4);
+  transition: all 0.25s ease;
+  letter-spacing: 0.3px;
+  margin-top: 16px;
+}
+
+.landing-btn-full:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(168, 85, 247, 0.6);
+}
+
+.landing-btn-full:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  box-shadow: none;
+}
 /* ============ TERMS MODAL ============ */
 .terms-modal-overlay {
   position: fixed;
