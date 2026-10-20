@@ -1785,8 +1785,11 @@ body {
     min-height: 0 !important;
   }
 
-  .chat-video-tile video {
-    object-fit: contain !important;
+.chat-video-tile video {
+    object-fit: cover !important;
     background: #000 !important;
+    width: 100% !important;
+    height: 100% !important;
+
   }
 }
