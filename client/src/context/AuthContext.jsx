@@ -3,6 +3,8 @@ import { auth, googleProvider } from '../firebase';
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -19,11 +21,21 @@ export function AuthProvider({ children }) {
   const [customAvatar, setCustomAvatar] = useState(null);
 
   useEffect(() => {
+    // 👇 Jab user redirect (Google Login) se wapas aaye
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log('✅ Logged in via Redirect:', result.user.email);
+        }
+      })
+      .catch((error) => {
+        console.error('❌ Redirect login error:', error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
 
-      // Custom avatar load karo
       if (currentUser?.uid) {
         const saved = localStorage.getItem(`avatar_${currentUser.uid}`);
         if (saved) setCustomAvatar(saved);
@@ -33,7 +45,27 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+  // 👇 Google Login (Popup try karega, fail hone pe Redirect)
+  const loginWithGoogle = async () => {
+    try {
+      // 1. Pehle Popup try karo (fast hota hai)
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.warn('⚠️ Popup failed:', error.code);
+      
+      // 2. Agar popup block ho jaye, toh Redirect use karo
+      if (
+        error.code === 'auth/popup-blocked' ||
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/cancelled-popup-request'
+      ) {
+        console.log('🔄 Switching to Redirect login...');
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        throw error; // Baaki errors throw karo
+      }
+    }
+  };
 
   const loginWithEmail = (email, password) =>
     signInWithEmailAndPassword(auth, email, password);
@@ -56,21 +88,18 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 👇 Custom avatar save karo
   const saveCustomAvatar = (base64) => {
     if (!user?.uid) return;
     localStorage.setItem(`avatar_${user.uid}`, base64);
     setCustomAvatar(base64);
   };
 
-  // 👇 Reset to Google
   const resetCustomAvatar = () => {
     if (!user?.uid) return;
     localStorage.removeItem(`avatar_${user.uid}`);
     setCustomAvatar(null);
   };
 
-  // 👇 Current avatar — custom ya Google
   const currentAvatar = customAvatar || user?.photoURL || null;
 
   return (
