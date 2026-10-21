@@ -1,69 +1,45 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
 import TermsModal from '../components/TermsModal';
 
-const MAX_INTERESTS = 5;
-
 export default function Landing() {
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const { loginAsGuest } = useAuth();
   const navigate = useNavigate();
-  const [interests, setInterests] = useState([]);
-  const [inputValue, setInputValue] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [error, setError] = useState('');
+  const [interests, setInterests] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState('terms');
+  const [loading, setLoading] = useState(false);
 
   const openModal = (type) => {
     setModalType(type);
     setModalOpen(true);
   };
 
-  const handleAddInterest = () => {
-    const value = inputValue.trim().toLowerCase().replace(/^#/, '');
-    if (!value) return;
-    if (interests.length >= MAX_INTERESTS) {
-      setError(t('landing.interests.max'));
-      setTimeout(() => setError(''), 2500);
-      return;
+  const handleStart = async () => {
+    setLoading(true);
+    try {
+      // 👇 Background mein Guest Login karo (bina popup ke)
+      await loginAsGuest();
+      
+      // Interests save karo
+      if (interests.trim()) {
+        sessionStorage.setItem('interests', interests.trim());
+      } else {
+        sessionStorage.removeItem('interests');
+      }
+
+      // Terms flag save karo
+      localStorage.setItem('acceptedTerms', 'true');
+      localStorage.setItem('acceptedTermsAt', new Date().toISOString());
+
+      // Chat page pe bhejo
+      navigate('/chat');
+    } catch (err) {
+      console.error(err);
+      alert('Login failed. Please try again.');
+      setLoading(false);
     }
-    if (interests.includes(value)) {
-      setError(t('landing.interests.exists'));
-      setTimeout(() => setError(''), 2500);
-      return;
-    }
-    setInterests([...interests, value]);
-    setInputValue('');
-    setError('');
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddInterest();
-    }
-  };
-
-  const handleRemoveInterest = (tag) => {
-    setInterests(interests.filter((i) => i !== tag));
-  };
-
-  const handleStart = () => {
-    if (!termsAccepted) return;
-
-    if (interests.length > 0) {
-      sessionStorage.setItem('interests', interests.join(','));
-    } else {
-      sessionStorage.removeItem('interests');
-    }
-
-    localStorage.setItem('acceptedTerms', 'true');
-    localStorage.setItem('acceptedTermsAt', new Date().toISOString());
-
-    navigate('/chat');
   };
 
   return (
@@ -72,107 +48,97 @@ export default function Landing() {
       <div className="landing-bg-orb landing-bg-orb-2" />
 
       <div className="landing-card">
+        {/* Logo */}
         <div className="landing-logo">
           <img src="/logo.png" alt="Random Talk" className="landing-logo-img" />
           <p className="landing-logo-tagline">Talk to strangers. Anonymously.</p>
         </div>
 
+        {/* Content */}
         <div className="landing-content">
-          <p>{t('landing.welcome.p1')}</p>
-          <p>{t('landing.welcome.p2')}</p>
-          <p className="landing-highlight">{t('landing.age.warning')}</p>
+          <p>
+            <b>Random Talk</b> is a great way to meet new friends from around
+            the world. You are paired randomly with another person to talk
+            one-on-one. Add your interests below to match with people who
+            share similar interests.
+          </p>
+
+          <p>
+            To help you stay safe, chats are anonymous unless you tell someone
+            who you are, and you can stop a chat at any time. Read our{' '}
+            <span className="landing-link" onClick={() => openModal('terms')}>
+              Terms of Service
+            </span>{' '}
+            and{' '}
+            <span
+              className="landing-link"
+              onClick={() => openModal('guidelines')}
+            >
+              Community Guidelines
+            </span>{' '}
+            before starting.
+          </p>
+
+          <p className="landing-highlight">
+            You must be 18+ or 13+ with parental permission and supervision to
+            use Random Talk. See our{' '}
+            <span className="landing-link" onClick={() => openModal('terms')}>
+              Terms of Service
+            </span>{' '}
+            for more info.
+          </p>
         </div>
 
+        {/* Warning */}
         <div className="landing-warning">
           <span className="landing-warning-icon">⚠</span>
-          <span>{t('landing.monitored')}</span>
+          <span>Video is monitored. Keep it clean</span>
         </div>
 
-        {/* Interests Section */}
+        {/* Interests */}
         <div className="landing-form">
-          <label className="landing-label">{t('landing.interests.title')}</label>
-
-          {/* Tags display */}
-          {interests.length > 0 && (
-            <div className="interest-tags">
-              {interests.map((tag) => (
-                <span key={tag} className="interest-tag">
-                  #{tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveInterest(tag)}
-                    className="interest-tag-remove"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
+          <label className="landing-label">
+            What do you wanna talk about?
+          </label>
           <div className="landing-form-row">
             <input
               type="text"
               className="landing-input"
-              placeholder={t('landing.interests.placeholder')}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              maxLength={20}
-              disabled={interests.length >= MAX_INTERESTS}
+              placeholder="Add your interests (optional)"
+              value={interests}
+              onChange={(e) => setInterests(e.target.value)}
+              maxLength={100}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleStart();
+              }}
             />
             <button
-              type="button"
-              onClick={handleAddInterest}
-              className="landing-add-btn"
-              disabled={!inputValue.trim() || interests.length >= MAX_INTERESTS}
+              onClick={handleStart}
+              className="landing-btn"
+              disabled={loading}
             >
-              + Add
+              {loading ? 'Connecting...' : 'Start Video Chat'}
             </button>
           </div>
-
-          <p className="landing-hint">{t('landing.interests.hint')}</p>
-
-          {error && <div className="landing-error">{error}</div>}
         </div>
 
-        {/* Terms Checkbox */}
-        <div className="landing-terms-check">
-          <label className="landing-checkbox-label">
-            <input
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(e) => setTermsAccepted(e.target.checked)}
-              className="landing-checkbox"
-            />
-            <span className="landing-checkbox-text">
-              {t('landing.terms.check')}
-            </span>
-          </label>
-        </div>
-
-        {/* Start Button */}
-        <button
-          onClick={handleStart}
-          className="landing-btn-full"
-          disabled={!termsAccepted}
-        >
-          {t('landing.start')} →
-        </button>
-
+        {/* Footer */}
         <div className="landing-footer">
           <span>© {new Date().getFullYear()} Random Talk</span>
           <span className="landing-footer-sep">·</span>
           <span className="landing-link" onClick={() => openModal('terms')}>
-            {t('landing.footer.terms')}
+            Terms of Service
           </span>
           <span className="landing-footer-sep">·</span>
           <span className="landing-link" onClick={() => openModal('privacy')}>
-            {t('landing.footer.privacy')}
+            Privacy Policy
           </span>
           <span className="landing-footer-sep">·</span>
-          <span className="landing-link" onClick={() => openModal('guidelines')}>
-            {t('landing.footer.guidelines')}
+          <span
+            className="landing-link"
+            onClick={() => openModal('guidelines')}
+          >
+            Community Guidelines
           </span>
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  signInAnonymously, // 👈 Guest Login ke liye
 } from 'firebase/auth';
 
 const AuthContext = createContext();
@@ -21,7 +22,7 @@ export function AuthProvider({ children }) {
   const [customAvatar, setCustomAvatar] = useState(null);
 
   useEffect(() => {
-    // 👇 Jab user redirect (Google Login) se wapas aaye
+    // 👇 Redirect se wapas aane pe login handle karo
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
@@ -32,10 +33,12 @@ export function AuthProvider({ children }) {
         console.error('❌ Redirect login error:', error);
       });
 
+    // Auth state change (Login/Logout)
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
 
+      // Custom avatar load karo
       if (currentUser?.uid) {
         const saved = localStorage.getItem(`avatar_${currentUser.uid}`);
         if (saved) setCustomAvatar(saved);
@@ -45,15 +48,24 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // 👇 Google Login (Popup try karega, fail hone pe Redirect)
+  // 👇 Guest Login (Anonymous)
+  const loginAsGuest = async () => {
+    try {
+      const result = await signInAnonymously(auth);
+      console.log('✅ Logged in as Guest:', result.user.uid);
+      return result;
+    } catch (error) {
+      console.error('❌ Guest login failed:', error);
+      throw error;
+    }
+  };
+
+  // 👇 Google Login (Popup -> Fallback Redirect)
   const loginWithGoogle = async () => {
     try {
-      // 1. Pehle Popup try karo (fast hota hai)
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.warn('⚠️ Popup failed:', error.code);
-      
-      // 2. Agar popup block ho jaye, toh Redirect use karo
       if (
         error.code === 'auth/popup-blocked' ||
         error.code === 'auth/popup-closed-by-user' ||
@@ -62,7 +74,7 @@ export function AuthProvider({ children }) {
         console.log('🔄 Switching to Redirect login...');
         await signInWithRedirect(auth, googleProvider);
       } else {
-        throw error; // Baaki errors throw karo
+        throw error;
       }
     }
   };
@@ -88,6 +100,7 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // 👇 Custom Avatar
   const saveCustomAvatar = (base64) => {
     if (!user?.uid) return;
     localStorage.setItem(`avatar_${user.uid}`, base64);
@@ -100,6 +113,7 @@ export function AuthProvider({ children }) {
     setCustomAvatar(null);
   };
 
+  // Current Avatar (Custom ya Google wala)
   const currentAvatar = customAvatar || user?.photoURL || null;
 
   return (
@@ -107,6 +121,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
+        loginAsGuest, // 👈 Naya function pass kiya
         loginWithGoogle,
         loginWithEmail,
         signupWithEmail,
