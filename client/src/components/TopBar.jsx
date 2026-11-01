@@ -54,8 +54,20 @@ export default function TopBar({
               filter: 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.4))',
             }}
           />
-
-          {/* Online count — desktop */}
+{/* Chhota Heart Icon */}
+<div style={{ 
+  background: 'linear-gradient(135deg, #ff6b9d, #ff477e)', 
+  padding: '4px 8px', 
+  borderRadius: '12px', 
+  marginLeft: '8px',
+  fontSize: '16px',
+  boxShadow: '0 4px 12px rgba(255, 71, 126, 0.4)'
+}}>
+  ❤️
+</div>
+          {
+            
+          /* Online count — desktop */}
           {onlineCount > 0 && (
             <div
               className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full"
