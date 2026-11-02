@@ -1992,17 +1992,277 @@ body {
   border-radius: 20px;
   margin: 10px;
 }
-
-/* Chat Panel ko light glass look do */
-.chat-panel {
-  background: rgba(255, 255, 255, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  box-shadow: 0 10px 30px rgba(255, 105, 180, 0.2) !important;
+/* ============ PREMIUM NEON PURPLE THEME (Monkey App Style) ============ */
+.chat-page {
+  /* Neon Purple Gradient */
+  background: linear-gradient(135deg, #5b4bff 0%, #8a2be2 50%, #4b0082 100%) !important;
+  position: relative;
+  overflow: hidden;
 }
 
-.chat-panel-header { color: #333 !important; }
-.chat-panel-title { color: #333 !important; }
-.chat-messages { background: rgba(255,255,255,0.5) !important; }
-.chat-input { background: #fff !important; color: #333 !important; }
-.chat-input::placeholder { color: #9ca3af !important; }
-.chat-empty { color: #6b7280 !important; }
+/* Background mein floating hearts/particles */
+.chat-page::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 10px, transparent 11px),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 15px, transparent 16px),
+    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.2) 12px, transparent 13px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* TopBar ko Light Glass look */
+.topbar {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Video Tiles ko Dark Purple Transparent look */
+.chat-video-tile {
+  background: #1a0b2e !important; /* Halka Dark Purple */
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important; /* Smooth corners */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Video Label (You / Stranger) */
+.chat-video-label {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(5px);
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+/* Bottom Control Bar */
+.control-bar {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  margin: 0 16px 16px 16px; /* Thoda float effect */
+}
+
+/* Chat Panel (Right Side) */
+.chat-panel {
+  background: rgba(90, 50, 200, 0.6) !important; /* Transparent Purple */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  margin: 16px 16px 16px 0; /* Thoda float effect */
+}
+
+.chat-panel-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.chat-panel-title {
+  color: #fff !important;
+}
+
+.chat-messages {
+  background: transparent !important;
+}
+
+.chat-msg-stranger {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+}
+
+.chat-input-form {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.chat-input {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+/* ============ MONKEY APP LANDING LAYOUT ============ */
+.monkey-landing {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+  background-color: #000;
+}
+
+/* Background Image setup */
+.monkey-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('/bg-image.jpg'); /* 👈 Apni image ka naam yahan daalo */
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+  opacity: 0.8; /* Thoda transparent taaki text dikhe */
+}
+
+/* Left side Camera Preview */
+.monkey-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.camera-placeholder {
+  width: 100%;
+  height: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+/* Right side Card Area */
+.monkey-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.monkey-card {
+  background: rgba(120, 80, 255, 0.85); /* Purple glass effect */
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 24px;
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Tabs */
+.monkey-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 4px;
+}
+.monkey-tab {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.monkey-tab.active {
+  background: #ffe600; /* Yellow active tab */
+  color: #000;
+}
+
+/* Logo & Text */
+.monkey-logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.monkey-logo {
+  width: 100px;
+  height: 100px;
+  border-radius: 20px;
+  object-fit: contain;
+}
+.monkey-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+}
+.monkey-subtitle {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  margin: 0;
+}
+
+/* Buttons */
+.monkey-match-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  color: #333;
+  font-weight: bold;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+.monkey-start-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  background: #ffe600; /* Yellow Button */
+  color: #000;
+  font-weight: 900;
+  font-size: 18px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #ccb800; /* 3D effect */
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.monkey-start-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #ccb800;
+}
+.monkey-start-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Footer */
+.monkey-footer {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+.monkey-footer span {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .monkey-landing {
+    flex-direction: column;
+  }
+  .monkey-left {
+    display: none; /* Mobile pe camera preview hide kar do */
+  }
+  .monkey-card {
+    background: transparent;
+    backdrop-filter: none;
+    border: none;
+    box-shadow: none;
+  }
+}
