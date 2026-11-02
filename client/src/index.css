@@ -2083,187 +2083,125 @@ body {
   color: #fff !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
-/* ============ MONKEY APP LANDING LAYOUT ============ */
-.monkey-landing {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
+/* /* ============ CLEAN PINK LANDING PAGE ============ */
+.pink-landing-wrapper {
   position: relative;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   background-color: #000;
 }
 
-/* Background Image setup */
-/* ============ NEW PINK HEART BACKGROUND ============ */
-.monkey-bg {
+/* Background Image Setup */
+.pink-bg {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url('/bg-pink.jpg') !important; /* 👈 Naya background */
+  background-image: url('/bg-pink.png') !important; /* 👈 Tumhari image */
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   z-index: 0;
-  opacity: 1; /* Full visibility */
+  opacity: 0.95;
 }
-/* Left side Camera Preview */
-.monkey-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+/* Pink Glass Card */
+.pink-card {
   position: relative;
-  z-index: 1;
-  padding: 20px;
-}
-
-.camera-placeholder {
-  width: 100%;
-  height: 100%;
-  max-width: 500px;
-  max-height: 80vh;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #555;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-}
-
-/* Right side Card Area */
-.monkey-right {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-}
-
-.monkey-card {
-  background: rgba(120, 80, 255, 0.85); /* Purple glass effect */
+  z-index: 10;
+  background: rgba(255, 105, 180, 0.85); /* Pink Glass Effect */
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.2);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 24px;
-  padding: 30px;
+  padding: 40px 30px;
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  box-shadow: 0 20px 50px rgba(255, 20, 147, 0.4); /* Pink Glow */
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-/* Tabs */
-.monkey-tabs {
-  display: flex;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-  padding: 4px;
-}
-.monkey-tab {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  background: transparent;
-  color: rgba(255,255,255,0.6);
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-.monkey-tab.active {
-  background: #ffe600; /* Yellow active tab */
-  color: #000;
+  gap: 30px;
 }
 
 /* Logo & Text */
-.monkey-logo-area {
+.logo-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
-.monkey-logo {
-  width: 100px;
-  height: 100px;
-  border-radius: 20px;
+.pink-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 24px;
   object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
 }
-.monkey-title {
-  font-size: 28px;
+.pink-title {
+  font-size: 34px;
   font-weight: 900;
   color: #fff;
   margin: 0;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
-.monkey-subtitle {
-  font-size: 14px;
-  color: rgba(255,255,255,0.8);
+.pink-subtitle {
+  font-size: 15px;
+  color: rgba(255,255,255,0.9);
   margin: 0;
+  font-weight: 500;
 }
 
-/* Buttons */
-.monkey-match-btn {
+/* Big Start Button */
+.pink-start-btn {
   width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  background: #fff;
-  color: #333;
-  font-weight: bold;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-}
-.monkey-start-btn {
-  width: 100%;
-  padding: 16px;
-  border-radius: 12px;
+  padding: 20px 10px;
+  border-radius: 16px;
   background: #ffe600; /* Yellow Button */
   color: #000;
   font-weight: 900;
-  font-size: 18px;
+  font-size: 20px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 6px 0 #ccb800; /* 3D effect */
+  box-shadow: 0 8px 0 #ccb800; /* 3D effect */
   transition: transform 0.1s, box-shadow 0.1s;
+  line-height: 1.2;
 }
-.monkey-start-btn:active {
+.pink-start-btn:active {
   transform: translateY(4px);
-  box-shadow: 0 2px 0 #ccb800;
+  box-shadow: 0 4px 0 #ccb800;
 }
-.monkey-start-btn:disabled {
+.pink-start-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
 /* Footer */
-.monkey-footer {
+.pink-footer {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.6);
+  gap: 25px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
 }
-.monkey-footer span {
+.pink-footer span {
   cursor: pointer;
+  transition: color 0.2s;
+}
+.pink-footer span:hover {
+  color: #fff;
   text-decoration: underline;
 }
 
 /* Mobile Responsive */
-@media (max-width: 768px) {
-  .monkey-landing {
-    flex-direction: column;
-  }
-  .monkey-left {
-    display: none; /* Mobile pe camera preview hide kar do */
-  }
-  .monkey-card {
-    background: transparent;
-    backdrop-filter: none;
-    border: none;
-    box-shadow: none;
+@media (max-width: 600px) {
+  .pink-card {
+    background: rgba(255, 105, 180, 0.95);
+    padding: 30px 20px;
+    margin: 20px;
   }
 }
