@@ -181,12 +181,9 @@ body {
 
 /* ============ CHAT PAGE ============ */
 .chat-page {
+  /* Landing page wala exact Pink Gradient */
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fbc2eb 100%) !important;
   position: relative;
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(135deg, #0a0e1a 0%, #131823 50%, #1a1025 100%);
   overflow: hidden;
 }
 
