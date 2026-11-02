@@ -330,7 +330,7 @@ export default function Home() {
     isMobile && (status === 'waiting' || status === 'connecting' || status === 'connected');
 
   return (
-    <div className="chat-page">
+  <div className="chat-page" style={{ background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fbc2eb 100%)' }}>
       <div className="chat-bg-orb chat-bg-orb-1" />
       <div className="chat-bg-orb chat-bg-orb-2" />
 
