@@ -2094,16 +2094,17 @@ body {
 }
 
 /* Background Image setup */
+/* ============ NEW PINK HEART BACKGROUND ============ */
 .monkey-bg {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url('/bg-image.jpg'); /* 👈 Apni image ka naam yahan daalo */
-  background-size: cover;
-  background-position: center;
+  background-image: url('/bg-pink.jpg') !important; /* 👈 Naya background */
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
   z-index: 0;
-  opacity: 0.8; /* Thoda transparent taaki text dikhe */
+  opacity: 1; /* Full visibility */
 }
-
 /* Left side Camera Preview */
 .monkey-left {
   flex: 1;
