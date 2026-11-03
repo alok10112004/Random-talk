@@ -2340,3 +2340,15 @@ body {
   width: 340px !important;
   min-height: 0 !important;
 }
+body {
+  background-image: url('/bg-pink.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  background-color: #ffb6c1 !important; /* Fallback pink color */
+}
+
+#root {
+  background-color: transparent !important;
+}
