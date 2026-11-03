@@ -326,17 +326,7 @@ export default function Home() {
     isMobile && (status === 'waiting' || status === 'connecting' || status === 'connected');
 
   return (
-    <div 
-      className="chat-page" 
-      style={{ 
-        // 🔥 BACKGROUND FIX: Image jaisa dark purple/pink effect
-        backgroundImage: 'url("/bg-pink.png")', 
-        backgroundSize: 'cover', 
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        minHeight: '100vh'
-      }}
-    >
+    <div className="chat-page" style={{ background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fbc2eb 100%)' }}>
       <div className="chat-bg-orb chat-bg-orb-1" />
       <div className="chat-bg-orb chat-bg-orb-2" />
 
@@ -348,60 +338,21 @@ export default function Home() {
         chatOpen={showChat}
       />
 
-      {/* 🔥 LAYOUT FIX: Force mobile layout on desktop too */}
-      <div 
-        className="chat-layout" 
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'column', // Side-by-side ki jagah upar-neeche
-          alignItems: 'center', 
-          justifyContent: 'center',
-          width: '100%',
-          maxWidth: '500px', // Laptop pe bhi mobile width jaisa
-          margin: '0 auto',
-          padding: '0 10px'
-        }}
-      >
+      <div className="chat-layout">
         {/* Video area wrapper */}
-        <div 
-          className="chat-videos-wrap" 
-          style={{ 
-            position: 'relative', 
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column', // Upar neeche videos
-            gap: '15px' 
-          }}
-        >
+        <div className="chat-videos-wrap" style={{ position: 'relative' }}>
           
           <SwipeWrapper
             onSwipeRight={handleNext}
             enabled={isMobile && status === 'connected'}
           >
-            <div 
-              className="chat-videos"
-              style={{
-                display: 'flex',
-                flexDirection: 'column', // Upar neeche videos
-                gap: '15px',
-                width: '100%'
-              }}
-            >
+            <div className="chat-videos">
               {/* Self video */}
-              <div 
-                className="chat-video-tile video-self-tile" 
-                style={{ 
-                  position: 'relative', 
-                  width: '100%', 
-                  aspectRatio: '4/3', // Image jaisa ratio
-                  borderRadius: '15px',
-                  overflow: 'hidden'
-                }}
-              >
-                <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div className="chat-video-tile video-self-tile" style={{ position: 'relative' }}>
+                <video ref={localVideoRef} autoPlay muted playsInline />
                 <div className="chat-video-label">{t('chat.you')}</div>
 
-                {/* STOP BUTTON */}
+                {/* 🔥 SIRF YE NAYA BUTTON HAI - STOP */}
                 {(status === 'connected' || status === 'waiting') && (
                   <button
                     onClick={handleStop}
@@ -409,7 +360,7 @@ export default function Home() {
                       position: 'absolute',
                       bottom: '15px',
                       right: '15px',
-                      backgroundColor: 'rgba(239, 68, 68, 0.85)', 
+                      backgroundColor: 'rgba(239, 68, 68, 0.85)',
                       color: 'white',
                       border: '1px solid rgba(255,255,255,0.4)',
                       borderRadius: '8px',
@@ -445,20 +396,11 @@ export default function Home() {
               </div>
 
               {/* Stranger video */}
-              <div 
-                className="chat-video-tile video-stranger-tile" 
-                style={{ 
-                  position: 'relative', 
-                  width: '100%', 
-                  aspectRatio: '4/3',
-                  borderRadius: '15px',
-                  overflow: 'hidden'
-                }}
-              >
-                <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div className="chat-video-tile video-stranger-tile" style={{ position: 'relative' }}>
+                <video ref={remoteVideoRef} autoPlay playsInline />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
 
-                {/* FLAG BUTTON ON STRANGER VIDEO */}
+                {/* 🚩 SIRF YE NAYA BUTTON HAI - FLAG */}
                 {status === 'connected' && (
                   <button
                     onClick={() => setReportOpen(true)}
@@ -498,32 +440,28 @@ export default function Home() {
           </SwipeWrapper>
 
           {!hideControlBarMobile && (
-            <div style={{ width: '100%', marginTop: '15px' }}>
-              <ControlBar
-                status={status}
-                onStart={handleStart}
-                onNext={handleNext}
-                onStop={handleStop}
-                onReport={() => setReportOpen(true)}
-                country={country}
-                onCountryChange={setCountry}
-              />
-            </div>
+            <ControlBar
+              status={status}
+              onStart={handleStart}
+              onNext={handleNext}
+              onStop={handleStop}
+              onReport={() => setReportOpen(true)}
+              country={country}
+              onCountryChange={setCountry}
+            />
           )}
         </div>
 
         {showChat && (
-          <div style={{ width: '100%', marginTop: '15px' }}>
-            <ChatPanel
-              messages={messages}
-              onSend={handleSendMessage}
-              connected={status === 'connected'}
-              onClose={() => setShowChat(false)}
-              isMobile={isMobile}
-              partnerCountry={partnerCountry}
-              onReportAbuse={() => setReportOpen(true)}
-            />
-          </div>
+          <ChatPanel
+            messages={messages}
+            onSend={handleSendMessage}
+            connected={status === 'connected'}
+            onClose={() => setShowChat(false)}
+            isMobile={isMobile}
+            partnerCountry={partnerCountry}
+            onReportAbuse={() => setReportOpen(true)}
+          />
         )}
       </div>
 
