@@ -13,7 +13,6 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import SwipeWrapper from '../components/SwipeWrapper';
 import BlockedScreen from './BlockedScreen';
 
-// Country names dictionary (same as before)
 const COUNTRY_NAMES = {
   ANY: { name: 'Any Country', flag: '🌍' },
   IN: { name: 'India', flag: '🇮🇳' },
@@ -85,7 +84,6 @@ export default function Home() {
   const [blockedUntil, setBlockedUntil] = useState(null);
   const [warning, setWarning] = useState(null);
   
-  // 👇 Partner Country state
   const [partnerCountry, setPartnerCountry] = useState(null);
 
   const [partnerHistory, setPartnerHistory] = useState([]);
@@ -170,16 +168,14 @@ export default function Home() {
 
     const onWaiting = () => {
       setStatus('waiting');
-      setPartnerCountry(null); // reset
+      setPartnerCountry(null);
     };
 
     const onMatched = async ({ roomId, partnerId, initiator, partnerCountry }) => {
       roomIdRef.current = roomId;
       currentPartnerRef.current = partnerId;
       setStatus('connecting');
-      setMessages([]); // Chat clear
-      
-      // 👇 Set partner country for banner
+      setMessages([]);
       setPartnerCountry(partnerCountry || 'ANY');
 
       let localStream = localStreamRef.current;
@@ -330,7 +326,17 @@ export default function Home() {
     isMobile && (status === 'waiting' || status === 'connecting' || status === 'connected');
 
   return (
-  <div className="chat-page" style={{ background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fbc2eb 100%)' }}>
+    <div 
+      className="chat-page" 
+      style={{ 
+        // 🔥 BACKGROUND FIX: Image jaisa dark purple/pink effect
+        backgroundImage: 'url("/bg-pink.png")', 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        minHeight: '100vh'
+      }}
+    >
       <div className="chat-bg-orb chat-bg-orb-1" />
       <div className="chat-bg-orb chat-bg-orb-2" />
 
@@ -342,17 +348,88 @@ export default function Home() {
         chatOpen={showChat}
       />
 
-      <div className="chat-layout">
-        <div className="chat-videos-wrap">
+      {/* 🔥 LAYOUT FIX: Force mobile layout on desktop too */}
+      <div 
+        className="chat-layout" 
+        style={{ 
+          display: 'flex', 
+          flexDirection: 'column', // Side-by-side ki jagah upar-neeche
+          alignItems: 'center', 
+          justifyContent: 'center',
+          width: '100%',
+          maxWidth: '500px', // Laptop pe bhi mobile width jaisa
+          margin: '0 auto',
+          padding: '0 10px'
+        }}
+      >
+        {/* Video area wrapper */}
+        <div 
+          className="chat-videos-wrap" 
+          style={{ 
+            position: 'relative', 
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column', // Upar neeche videos
+            gap: '15px' 
+          }}
+        >
+          
           <SwipeWrapper
             onSwipeRight={handleNext}
             enabled={isMobile && status === 'connected'}
           >
-            <div className="chat-videos">
+            <div 
+              className="chat-videos"
+              style={{
+                display: 'flex',
+                flexDirection: 'column', // Upar neeche videos
+                gap: '15px',
+                width: '100%'
+              }}
+            >
               {/* Self video */}
-              <div className="chat-video-tile video-self-tile">
-                <video ref={localVideoRef} autoPlay muted playsInline />
+              <div 
+                className="chat-video-tile video-self-tile" 
+                style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  aspectRatio: '4/3', // Image jaisa ratio
+                  borderRadius: '15px',
+                  overflow: 'hidden'
+                }}
+              >
+                <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div className="chat-video-label">{t('chat.you')}</div>
+
+                {/* STOP BUTTON */}
+                {(status === 'connected' || status === 'waiting') && (
+                  <button
+                    onClick={handleStop}
+                    style={{
+                      position: 'absolute',
+                      bottom: '15px',
+                      right: '15px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.85)', 
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.4)',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      zIndex: 50,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(4px)'
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+                    </svg>
+                    STOP
+                  </button>
+                )}
 
                 {status === 'idle' && (
                   <div className="self-logo-overlay">
@@ -368,9 +445,48 @@ export default function Home() {
               </div>
 
               {/* Stranger video */}
-              <div className="chat-video-tile video-stranger-tile">
-                <video ref={remoteVideoRef} autoPlay playsInline />
+              <div 
+                className="chat-video-tile video-stranger-tile" 
+                style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  aspectRatio: '4/3',
+                  borderRadius: '15px',
+                  overflow: 'hidden'
+                }}
+              >
+                <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
+
+                {/* FLAG BUTTON ON STRANGER VIDEO */}
+                {status === 'connected' && (
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    style={{
+                      position: 'absolute',
+                      top: '15px',
+                      right: '15px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '6px',
+                      padding: '6px',
+                      zIndex: 50,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(4px)'
+                    }}
+                    title="Report User"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                      <line x1="4" y1="22" x2="4" y2="15"></line>
+                    </svg>
+                  </button>
+                )}
+
                 {loadingType && <LoadingOverlay type={loadingType} />}
                 {status === 'idle' && (
                   <div className="idle-overlay">
@@ -382,28 +498,32 @@ export default function Home() {
           </SwipeWrapper>
 
           {!hideControlBarMobile && (
-            <ControlBar
-              status={status}
-              onStart={handleStart}
-              onNext={handleNext}
-              onStop={handleStop}
-              onReport={() => setReportOpen(true)}
-              country={country}
-              onCountryChange={setCountry}
-            />
+            <div style={{ width: '100%', marginTop: '15px' }}>
+              <ControlBar
+                status={status}
+                onStart={handleStart}
+                onNext={handleNext}
+                onStop={handleStop}
+                onReport={() => setReportOpen(true)}
+                country={country}
+                onCountryChange={setCountry}
+              />
+            </div>
           )}
         </div>
 
         {showChat && (
-          <ChatPanel
-            messages={messages}
-            onSend={handleSendMessage}
-            connected={status === 'connected'}
-            onClose={() => setShowChat(false)}
-            isMobile={isMobile}
-            partnerCountry={partnerCountry} // 👈 Pass country
-            onReportAbuse={() => setReportOpen(true)} // 👈 Pass report handler (optional)
-          />
+          <div style={{ width: '100%', marginTop: '15px' }}>
+            <ChatPanel
+              messages={messages}
+              onSend={handleSendMessage}
+              connected={status === 'connected'}
+              onClose={() => setShowChat(false)}
+              isMobile={isMobile}
+              partnerCountry={partnerCountry}
+              onReportAbuse={() => setReportOpen(true)}
+            />
+          </div>
         )}
       </div>
 

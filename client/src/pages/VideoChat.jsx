@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
+import ReportModal from "../components/ReportModal"; // ✅ Naya Import
 
 const socket = io("http://localhost:5000");
 
@@ -16,6 +17,9 @@ function VideoChat() {
   const [status, setStatus] = useState("idle");
   const [gender, setGender] = useState("male");
   const [onlineCount] = useState(364488);
+  
+  // ✅ Naya State Report Modal ke liye
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -195,17 +199,33 @@ function VideoChat() {
           {/* Video Area */}
           <div className="lg:col-span-2 space-y-3">
             <div className="relative bg-gray-900 rounded-lg overflow-hidden border-2 border-orange-500/30">
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full aspect-video object-cover"
-              />
+              
+              {/* ✅ Apna Video + STOP Button (jab call connect ya searching ho) */}
+              <div className="relative w-full aspect-video">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <p className="absolute top-2 left-2 bg-black/70 px-2 py-1 rounded text-xs z-10">
+                  You • {user?.country || "🌍"}
+                </p>
 
-              {/* Partner video */}
+                {(status === "connected" || status === "searching") && (
+                  <button
+                    onClick={stopChat}
+                    className="absolute bottom-2 left-2 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold rounded-md backdrop-blur-sm transition-all z-20 flex items-center gap-1"
+                  >
+                    ⏹ STOP
+                  </button>
+                )}
+              </div>
+
+              {/* Partner video + FLAG Button */}
               {status === "connected" && (
-                <div className="absolute bottom-2 right-2 w-40 h-28 bg-black rounded-lg overflow-hidden border-2 border-orange-500">
+                <div className="absolute bottom-2 right-2 w-40 h-28 bg-black rounded-lg overflow-hidden border-2 border-orange-500 z-10">
                   <video
                     ref={remoteVideoRef}
                     autoPlay
@@ -213,19 +233,26 @@ function VideoChat() {
                     className="w-full h-full object-cover"
                   />
                   {partnerCountry && (
-                    <div className="absolute top-1 left-1 bg-black/80 px-2 py-0.5 rounded text-xs">
+                    <div className="absolute top-1 left-1 bg-black/80 px-2 py-0.5 rounded text-xs z-10">
                       🌍 {partnerCountry}
                     </div>
                   )}
+                  {/* ✅ Stranger Pr Transparent Flag Button */}
+                  <button
+                    onClick={() => setIsReportOpen(true)}
+                    className="absolute top-1 right-1 p-1.5 bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white rounded transition-all z-20"
+                    title="Report Stranger"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                      <line x1="4" y1="22" x2="4" y2="15"></line>
+                    </svg>
+                  </button>
                 </div>
               )}
 
-              <p className="absolute top-2 left-2 bg-black/70 px-2 py-1 rounded text-xs">
-                You • {user?.country || "🌍"}
-              </p>
-
               {status === "searching" && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-0 pointer-events-none">
                   <p className="text-lg text-orange-400 animate-pulse">
                     🔍 Searching for partner...
                   </p>
@@ -328,6 +355,14 @@ function VideoChat() {
           </div>
         </div>
       </div>
+      
+      {/* ✅ Report Modal (Agar tera ReportModal props leta hai toh tu adjust kar lena) */}
+      <ReportModal 
+        isOpen={isReportOpen} 
+        onClose={() => setIsReportOpen(false)} 
+        partnerId={partnerId}
+        onReportSubmitted={stopChat} // Report karne ke baad call cut ho jaye
+      />
     </div>
   );
 }
