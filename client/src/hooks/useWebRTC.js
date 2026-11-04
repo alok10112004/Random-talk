@@ -4,7 +4,7 @@ import { useRef, useCallback } from 'react';
 // METERED.CA TURN SERVER CONFIG
 // ============================================
 const TURN_USERNAME = '7f3c95826ffbde8af6338539';
-const TURN_PASSWORD = 'B3jr4blV1TLmiV1/'; // 👈 Yahan apna password daalo
+const TURN_PASSWORD = 'B3jr4blV1TLmiV1/'; 
 
 const ICE_SERVERS = {
   iceServers: [
@@ -90,9 +90,7 @@ export function useWebRTC(socket) {
             if (sender.track && sender.track.kind === 'video') {
               const params = sender.getParameters();
               if (!params.encodings) params.encodings = [{}];
-              // 1.5 Mbps force karo (HD quality ke liye)
               params.encodings[0].maxBitrate = 1500000;
-              // Kabhi kabhi 2 Mbps tak allow karo
               params.encodings[0].maxFramerate = 30;
               sender.setParameters(params);
               console.log('🎥 Video bitrate forced to 1.5 Mbps');
@@ -101,7 +99,7 @@ export function useWebRTC(socket) {
         } catch (err) {
           console.warn('Bitrate force error:', err);
         }
-      }, 1000); // 1 sec delay taaki connection set ho jaye
+      }, 1000);
 
       return pc;
     },
@@ -113,14 +111,26 @@ export function useWebRTC(socket) {
       throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
     }
 
+    // 🔥 SMART CAMERA SETTINGS (Mobile pe 4:3, Laptop pe 16:9)
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    const videoConstraints = isMobileDevice 
+      ? { 
+          width: { ideal: 640, max: 1280 }, 
+          height: { ideal: 480, max: 960 },  // 4:3 ratio (Wider view, no 2x zoom)
+          facingMode: 'user',
+          frameRate: { ideal: 30 }
+        }
+      : { 
+          width: { ideal: 1280, max: 1920 }, 
+          height: { ideal: 720, max: 1080 }, // 16:9 ratio (Desktop)
+          facingMode: 'user',
+          frameRate: { ideal: 30, max: 60 }
+        };
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280, max: 1920 }, // High resolution
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 30, max: 60 },
-          facingMode: 'user',
-        },
+        video: videoConstraints,
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
