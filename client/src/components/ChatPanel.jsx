@@ -19,9 +19,11 @@ export default function ChatPanel({ messages, onSend, connected, onClose }) {
     <aside
       className="chat-panel"
       style={{
-        background: 'rgba(255, 255, 255, 0.85)', // White glass
+        background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(20px)',
         borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
+        zIndex: 10, // 🔥 YAHI FIX HAI (Isko 10 kar diya)
+        position: 'relative' // 🔥 Z-index kaam karne ke liye zaroori hai
       }}
     >
       <div className="chat-panel-header" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>

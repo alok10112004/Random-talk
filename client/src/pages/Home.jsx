@@ -13,56 +13,6 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import SwipeWrapper from '../components/SwipeWrapper';
 import BlockedScreen from './BlockedScreen';
 
-const COUNTRY_NAMES = {
-  ANY: { name: 'Any Country', flag: '🌍' },
-  IN: { name: 'India', flag: '🇮🇳' },
-  US: { name: 'United States', flag: '🇺🇸' },
-  GB: { name: 'United Kingdom', flag: '🇬🇧' },
-  BR: { name: 'Brazil', flag: '🇧🇷' },
-  PK: { name: 'Pakistan', flag: '🇵🇰' },
-  BD: { name: 'Bangladesh', flag: '🇧🇩' },
-  NP: { name: 'Nepal', flag: '🇳🇵' },
-  LK: { name: 'Sri Lanka', flag: '🇱🇰' },
-  CA: { name: 'Canada', flag: '🇨🇦' },
-  AU: { name: 'Australia', flag: '🇦🇺' },
-  DE: { name: 'Germany', flag: '🇩🇪' },
-  FR: { name: 'France', flag: '🇫🇷' },
-  JP: { name: 'Japan', flag: '🇯🇵' },
-  CN: { name: 'China', flag: '🇨🇳' },
-  RU: { name: 'Russia', flag: '🇷🇺' },
-  ID: { name: 'Indonesia', flag: '🇮🇩' },
-  PH: { name: 'Philippines', flag: '🇵🇭' },
-  VN: { name: 'Vietnam', flag: '🇻🇳' },
-  TH: { name: 'Thailand', flag: '🇹🇭' },
-  SA: { name: 'Saudi Arabia', flag: '🇸🇦' },
-  AE: { name: 'UAE', flag: '🇦🇪' },
-  EG: { name: 'Egypt', flag: '🇪🇬' },
-  NG: { name: 'Nigeria', flag: '🇳🇬' },
-  ZA: { name: 'South Africa', flag: '🇿🇦' },
-  MX: { name: 'Mexico', flag: '🇲🇽' },
-  AR: { name: 'Argentina', flag: '🇦🇷' },
-  ES: { name: 'Spain', flag: '🇪🇸' },
-  IT: { name: 'Italy', flag: '🇮🇹' },
-  NL: { name: 'Netherlands', flag: '🇳🇱' },
-  TR: { name: 'Turkey', flag: '🇹🇷' },
-  KR: { name: 'South Korea', flag: '🇰🇷' },
-  MY: { name: 'Malaysia', flag: '🇲🇾' },
-  SG: { name: 'Singapore', flag: '🇸🇬' },
-  IR: { name: 'Iran', flag: '🇮🇷' },
-  IQ: { name: 'Iraq', flag: '🇮🇶' },
-  AF: { name: 'Afghanistan', flag: '🇦🇫' },
-  NZ: { name: 'New Zealand', flag: '🇳🇿' },
-  IE: { name: 'Ireland', flag: '🇮🇪' },
-  PT: { name: 'Portugal', flag: '🇵🇹' },
-  CH: { name: 'Switzerland', flag: '🇨🇭' },
-  SE: { name: 'Sweden', flag: '🇸🇪' },
-  NO: { name: 'Norway', flag: '🇳🇴' },
-  PL: { name: 'Poland', flag: '🇵🇱' },
-  UA: { name: 'Ukraine', flag: '🇺🇦' },
-  KE: { name: 'Kenya', flag: '🇰🇪' },
-  GH: { name: 'Ghana', flag: '🇬🇭' },
-};
-
 export default function Home() {
   const socket = useSocket();
   const { user } = useAuth();
@@ -352,19 +302,19 @@ export default function Home() {
                 <video ref={localVideoRef} autoPlay muted playsInline />
                 <div className="chat-video-label">{t('chat.you')}</div>
 
-                {/* 🔥 SIRF YE NAYA BUTTON HAI - STOP */}
-                {(status === 'connected' || status === 'waiting') && (
+                {/* STOP BUTTON - ONLY ON MOBILE */}
+                {isMobile && (status === 'connected' || status === 'waiting') && (
                   <button
                     onClick={handleStop}
                     style={{
                       position: 'absolute',
-                      bottom: '15px',
-                      right: '15px',
-                      backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                      bottom: '12px',
+                      right: '12px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.9)',
                       color: 'white',
-                      border: '1px solid rgba(255,255,255,0.4)',
-                      borderRadius: '8px',
-                      padding: '6px 10px',
+                      border: '1px solid rgba(255,255,255,0.5)',
+                      borderRadius: '20px',
+                      padding: '6px 12px',
                       fontSize: '11px',
                       fontWeight: 'bold',
                       zIndex: 50,
@@ -372,10 +322,11 @@ export default function Home() {
                       alignItems: 'center',
                       gap: '4px',
                       cursor: 'pointer',
-                      backdropFilter: 'blur(4px)'
+                      backdropFilter: 'blur(4px)',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                       <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
                     </svg>
                     STOP
@@ -400,7 +351,7 @@ export default function Home() {
                 <video ref={remoteVideoRef} autoPlay playsInline />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
 
-                {/* 🚩 SIRF YE NAYA BUTTON HAI - FLAG */}
+                {/* FLAG BUTTON ON STRANGER VIDEO */}
                 {status === 'connected' && (
                   <button
                     onClick={() => setReportOpen(true)}
