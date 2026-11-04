@@ -15,7 +15,8 @@ import BlockedScreen from './BlockedScreen';
 
 export default function Home() {
   const socket = useSocket();
-  const { user } = useAuth();
+  // 🔥 loginAsGuest import kiya
+  const { user, loginAsGuest } = useAuth(); 
   const { t } = useLanguage();
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -35,7 +36,6 @@ export default function Home() {
   const [warning, setWarning] = useState(null);
   
   const [partnerCountry, setPartnerCountry] = useState(null);
-
   const [partnerHistory, setPartnerHistory] = useState([]);
   const partnerHistoryRef = useRef([]);
   const currentPartnerRef = useRef(null);
@@ -60,11 +60,6 @@ export default function Home() {
     makeOffer,
     cleanup,
   } = useWebRTC(socket);
-
-  useEffect(() => {
-    const saved = sessionStorage.getItem('interests');
-    if (saved) setInterests(saved);
-  }, []);
 
   useEffect(() => {
     if (socket) socket.emit('set-country', { country });
@@ -94,11 +89,7 @@ export default function Home() {
   const addPartnerToHistory = (partnerId) => {
     setTimeout(() => {
       const thumb = captureThumbnail();
-      const partner = {
-        id: partnerId,
-        thumbnail: thumb,
-        timestamp: Date.now(),
-      };
+      const partner = { id: partnerId, thumbnail: thumb, timestamp: Date.now() };
       const newHistory = [partner, ...partnerHistoryRef.current].slice(0, 5);
       partnerHistoryRef.current = newHistory;
       setPartnerHistory(newHistory);
@@ -112,15 +103,13 @@ export default function Home() {
   useEffect(() => {
     if (!socket) return;
 
+    // Agar user available hai tabhi identify karo
     if (user?.uid) {
       socket.emit('identify', { userId: user.uid });
     }
 
-    const onWaiting = () => {
-      setStatus('waiting');
-      setPartnerCountry(null);
-    };
-
+    const onWaiting = () => { setStatus('waiting'); setPartnerCountry(null); };
+    
     const onMatched = async ({ roomId, partnerId, initiator, partnerCountry }) => {
       roomIdRef.current = roomId;
       currentPartnerRef.current = partnerId;
@@ -135,8 +124,7 @@ export default function Home() {
       }
 
       const pc = createPeer((remoteStream) => {
-        if (remoteVideoRef.current)
-          remoteVideoRef.current.srcObject = remoteStream;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
         addPartnerToHistory(partnerId);
         setStatus('connected');
       });
@@ -146,7 +134,6 @@ export default function Home() {
     };
 
     const onSignal = ({ data }) => handleSignal(data);
-
     const onPartnerDisconnected = () => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       setStatus('waiting');
@@ -187,13 +174,22 @@ export default function Home() {
     };
   }, [socket, cleanup, createPeer, handleSignal, makeOffer, roomIdRef, startLocalStream, localStreamRef, isMobile, t, user]);
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const handleStart = async () => {
     if (!socket) return;
+    
+    // 🔥 NAYA LOGIC: Agar user nahi hai, toh piche se Guest login karo
+    if (!user) {
+      try {
+        await loginAsGuest(); 
+        // Login hote hi socket automatically naya ID le lega (ya thoda wait karenge)
+      } catch (err) {
+        alert("Guest login failed. Please check internet.");
+        return;
+      }
+    }
+
     setStatus('starting');
     try {
       const localStream = await startLocalStream();
@@ -206,22 +202,18 @@ export default function Home() {
     socket.emit('find-partner', { interests: getInterestsArray() });
   };
 
-  const handleNext = () => {
+  const handleNext = () => { /* Same as before */ 
     if (!socket) return;
     setStatus('waiting');
     setMessages([]);
     setPartnerCountry(null);
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-
-    if (pcRef?.current) {
-      try { pcRef.current.close(); pcRef.current = null; } catch (e) {}
-    }
-
+    if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
     socket.emit('next');
     socket.emit('find-partner', { interests: getInterestsArray() });
   };
 
-  const handleStop = () => {
+  const handleStop = () => { /* Same as before */
     cleanup();
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -231,18 +223,15 @@ export default function Home() {
     if (socket) socket.emit('stop');
   };
 
-  const handleSendMessage = (text) => {
+  const handleSendMessage = (text) => { /* Same as before */
     if (!socket || !roomIdRef.current) return;
     socket.emit('chat-message', { roomId: roomIdRef.current, message: text });
     setMessages((prev) => [...prev, { from: 'me', text }]);
   };
 
-  const handleReportSubmit = async ({ partnerId, reason }) => {
+  const handleReportSubmit = async ({ partnerId, reason }) => { /* Same as before */
     if (!socket) return;
-    socket.emit('report', {
-      partnerId: partnerId || currentPartnerRef.current,
-      reason,
-    });
+    socket.emit('report', { partnerId: partnerId || currentPartnerRef.current, reason });
     showToast(t('report.toast.auto'));
     setTimeout(() => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -256,24 +245,11 @@ export default function Home() {
   };
 
   if (blockedUntil) {
-    return (
-      <BlockedScreen
-        until={blockedUntil}
-        onExpire={() => {
-          setBlockedUntil(null);
-          window.location.reload();
-        }}
-      />
-    );
+    return <BlockedScreen until={blockedUntil} onExpire={() => { setBlockedUntil(null); window.location.reload(); }} />;
   }
 
-  const loadingType =
-    status === 'starting' ? 'starting' :
-    status === 'waiting' ? 'waiting' :
-    status === 'connecting' ? 'connecting' : null;
-
-  const hideControlBarMobile =
-    isMobile && (status === 'waiting' || status === 'connecting' || status === 'connected');
+  const loadingType = status === 'starting' ? 'starting' : status === 'waiting' ? 'waiting' : status === 'connecting' ? 'connecting' : null;
+  const hideControlBarMobile = isMobile && (status === 'waiting' || status === 'connecting' || status === 'connected');
 
   return (
     <div className="chat-page" style={{ background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fbc2eb 100%)' }}>
@@ -289,46 +265,17 @@ export default function Home() {
       />
 
       <div className="chat-layout">
-        {/* Video area wrapper */}
         <div className="chat-videos-wrap" style={{ position: 'relative' }}>
-          
-          <SwipeWrapper
-            onSwipeRight={handleNext}
-            enabled={isMobile && status === 'connected'}
-          >
+          <SwipeWrapper onSwipeRight={handleNext} enabled={isMobile && status === 'connected'}>
             <div className="chat-videos">
               {/* Self video */}
               <div className="chat-video-tile video-self-tile" style={{ position: 'relative' }}>
                 <video ref={localVideoRef} autoPlay muted playsInline />
                 <div className="chat-video-label">{t('chat.you')}</div>
 
-                {/* STOP BUTTON - ONLY ON MOBILE */}
                 {isMobile && (status === 'connected' || status === 'waiting') && (
-                  <button
-                    onClick={handleStop}
-                    style={{
-                      position: 'absolute',
-                      bottom: '12px',
-                      right: '12px',
-                      backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                      color: 'white',
-                      border: '1px solid rgba(255,255,255,0.5)',
-                      borderRadius: '20px',
-                      padding: '6px 12px',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      zIndex: 50,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      cursor: 'pointer',
-                      backdropFilter: 'blur(4px)',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
-                    }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-                    </svg>
+                  <button onClick={handleStop} style={{ position: 'absolute', bottom: '12px', right: '12px', backgroundColor: 'rgba(239, 68, 68, 0.9)', color: 'white', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '20px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', zIndex: 50, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', backdropFilter: 'blur(4px)', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /></svg>
                     STOP
                   </button>
                 )}
@@ -351,32 +298,9 @@ export default function Home() {
                 <video ref={remoteVideoRef} autoPlay playsInline />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
 
-                {/* FLAG BUTTON ON STRANGER VIDEO */}
                 {status === 'connected' && (
-                  <button
-                    onClick={() => setReportOpen(true)}
-                    style={{
-                      position: 'absolute',
-                      top: '15px',
-                      right: '15px',
-                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                      color: 'white',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '6px',
-                      padding: '6px',
-                      zIndex: 50,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      backdropFilter: 'blur(4px)'
-                    }}
-                    title="Report User"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                      <line x1="4" y1="22" x2="4" y2="15"></line>
-                    </svg>
+                  <button onClick={() => setReportOpen(true)} style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'rgba(0, 0, 0, 0.4)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }} title="Report User">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
                   </button>
                 )}
 
@@ -417,23 +341,9 @@ export default function Home() {
       </div>
 
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-
-      <ReportModal
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        onSubmit={handleReportSubmit}
-        partners={partnerHistory}
-        currentPartnerId={currentPartnerRef.current}
-      />
-
-      <WarningModal
-        open={!!warning}
-        level={warning?.level}
-        message={warning?.message}
-        detail={warning?.detail}
-        onClose={() => setWarning(null)}
-      />
-
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} onSubmit={handleReportSubmit} partners={partnerHistory} currentPartnerId={currentPartnerRef.current} />
+      <WarningModal open={!!warning} level={warning?.level} message={warning?.message} detail={warning?.detail} onClose={() => setWarning(null)} />
+      
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl z-[200] text-sm font-medium">
           {toast}
