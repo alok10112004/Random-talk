@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import TermsModal from '../components/TermsModal';
-import HeroAnimation from '../components/HeroAnimation';
 
 export default function Landing() {
   const { loginAsGuest } = useAuth();
@@ -25,39 +24,23 @@ export default function Landing() {
 
   return (
     <div className="pink-landing-wrapper">
+      {/* Background Image */}
       <div className="pink-bg"></div>
 
+      {/* Main Card Center Me */}
       <div className="pink-card">
-        
-        {/* 🔥 LADKI - LOGO - LADKA */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px', marginTop: '10px', height: '110px' }}>
-          
-          <HeroAnimation />
-
-          {/* Logo */}
-          <div style={{ 
-            position: 'absolute', 
-            top: '50%', 
-            left: '50%', 
-            transform: 'translate(-50%, -50%)', 
-            zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <img 
-              src="/logo.png" 
-              alt="Random Talk" 
-              className="pink-logo pulse-logo" 
-              style={{ height: '100px', width: 'auto', filter: 'drop-shadow(0px 5px 20px rgba(236,72,153,0.6))' }} 
-            />
-          </div>
-          
+        {/* Logo & Title */}
+        <div className="logo-area">
+          {/* 🔥 Yahan 'pulse-logo' class add ki hai taaki zoom in/out animation chale */}
+          <img 
+            src="/logo.png" 
+            alt="Random Talk" 
+            className="pink-logo pulse-logo" 
+            style={{ height: '100px', width: 'auto' }} 
+          />
+          <h1 className="pink-title">Random Talk</h1>
+          <p className="pink-subtitle">Talk to strangers. Anonymously.</p>
         </div>
-
-        {/* Title (Distance kam kiya marginTop: 0 se -10px karke) */}
-        <h1 className="pink-title" style={{ marginTop: '-10px' }}>Random Talk</h1>
-        <p className="pink-subtitle">Talk to strangers. Anonymously.</p>
 
         {/* Start Button */}
         <button 
