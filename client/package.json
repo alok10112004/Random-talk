@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "country-codes-list": "^1.6.12",
     "country-flag-icons": "^1.6.20",
     "firebase": "^11.0.2",
