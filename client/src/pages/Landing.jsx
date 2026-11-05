@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import TermsModal from '../components/TermsModal';
+import HeroAnimation from '../components/HeroAnimation';
 
 export default function Landing() {
   const { loginAsGuest } = useAuth();
@@ -29,6 +30,10 @@ export default function Landing() {
 
       {/* Main Card Center Me */}
       <div className="pink-card">
+        
+        {/* 🔥 Ye Naya Animation Add Kiya Hai */}
+        <HeroAnimation />
+
         {/* Logo & Title */}
         <div className="logo-area">
           <img src="/logo.png" alt="Random Talk" className="pink-logo" />
