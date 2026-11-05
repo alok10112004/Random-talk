@@ -210,7 +210,7 @@ export default function Home() {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
     socket.emit('next');
-    socket.emit('find-partner', { interests: getInterestsArray() });
+    
   };
 
   const handleStop = () => { /* Same as before */
@@ -236,7 +236,7 @@ export default function Home() {
     setTimeout(() => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
-      setStatus('waiting');
+      setStatus('idle');
       setMessages([]);
       setPartnerCountry(null);
       socket.emit('next');
