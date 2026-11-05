@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom'; // 🔥 Naya import
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -15,7 +16,6 @@ import BlockedScreen from './BlockedScreen';
 
 export default function Home() {
   const socket = useSocket();
-  // 🔥 loginAsGuest import kiya
   const { user, loginAsGuest } = useAuth(); 
   const { t } = useLanguage();
   const localVideoRef = useRef(null);
@@ -34,12 +34,10 @@ export default function Home() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState(null);
   const [warning, setWarning] = useState(null);
-  
   const [partnerCountry, setPartnerCountry] = useState(null);
   const [partnerHistory, setPartnerHistory] = useState([]);
   const partnerHistoryRef = useRef([]);
   const currentPartnerRef = useRef(null);
-
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth <= 768
   );
@@ -65,6 +63,8 @@ export default function Home() {
     if (socket) socket.emit('set-country', { country });
   }, [socket, country]);
 
+  // ... (baaki saara code same rahega, jaise captureThumbnail, addPartnerToHistory, useEffect socket wala, handleStart, handleNext, handleStop, handleSendMessage, handleReportSubmit)
+
   const captureThumbnail = () => {
     const video = remoteVideoRef.current;
     if (!video || !video.videoWidth) return null;
@@ -81,9 +81,7 @@ export default function Home() {
       const sy = (vh - minSide) / 2;
       ctx.drawImage(video, sx, sy, minSide, minSide, 0, 0, size, size);
       return canvas.toDataURL('image/jpeg', 0.6);
-    } catch (err) {
-      return null;
-    }
+    } catch (err) { return null; }
   };
 
   const addPartnerToHistory = (partnerId) => {
@@ -102,37 +100,27 @@ export default function Home() {
 
   useEffect(() => {
     if (!socket) return;
-
-    // Agar user available hai tabhi identify karo
-    if (user?.uid) {
-      socket.emit('identify', { userId: user.uid });
-    }
-
+    if (user?.uid) socket.emit('identify', { userId: user.uid });
     const onWaiting = () => { setStatus('waiting'); setPartnerCountry(null); };
-    
     const onMatched = async ({ roomId, partnerId, initiator, partnerCountry }) => {
       roomIdRef.current = roomId;
       currentPartnerRef.current = partnerId;
       setStatus('connecting');
       setMessages([]);
       setPartnerCountry(partnerCountry || 'ANY');
-
       let localStream = localStreamRef.current;
       if (!localStream) {
         localStream = await startLocalStream();
         if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
       }
-
       const pc = createPeer((remoteStream) => {
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
         addPartnerToHistory(partnerId);
         setStatus('connected');
       });
-
       localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
       if (initiator) await makeOffer();
     };
-
     const onSignal = ({ data }) => handleSignal(data);
     const onPartnerDisconnected = () => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -140,37 +128,23 @@ export default function Home() {
       setMessages([]);
       setPartnerCountry(null);
     };
-
     const onChat = ({ message }) => {
       setMessages((prev) => [...prev, { from: 'stranger', text: message }]);
       if (isMobile) setShowChat(true);
     };
-
     const onReportReceived = () => showToast(t('report.toast'));
     const onOnlineCount = (count) => setOnlineCount(count);
     const onBlocked = ({ until }) => setBlockedUntil(until);
     const onWarning = (data) => setWarning(data);
-
-    socket.on('waiting', onWaiting);
-    socket.on('matched', onMatched);
-    socket.on('signal', onSignal);
-    socket.on('partner-disconnected', onPartnerDisconnected);
-    socket.on('chat-message', onChat);
-    socket.on('report-received', onReportReceived);
-    socket.on('online-count', onOnlineCount);
-    socket.on('you-are-blocked', onBlocked);
-    socket.on('warning', onWarning);
-
+    socket.on('waiting', onWaiting); socket.on('matched', onMatched); socket.on('signal', onSignal);
+    socket.on('partner-disconnected', onPartnerDisconnected); socket.on('chat-message', onChat);
+    socket.on('report-received', onReportReceived); socket.on('online-count', onOnlineCount);
+    socket.on('you-are-blocked', onBlocked); socket.on('warning', onWarning);
     return () => {
-      socket.off('waiting', onWaiting);
-      socket.off('matched', onMatched);
-      socket.off('signal', onSignal);
-      socket.off('partner-disconnected', onPartnerDisconnected);
-      socket.off('chat-message', onChat);
-      socket.off('report-received', onReportReceived);
-      socket.off('online-count', onOnlineCount);
-      socket.off('you-are-blocked', onBlocked);
-      socket.off('warning', onWarning);
+      socket.off('waiting', onWaiting); socket.off('matched', onMatched); socket.off('signal', onSignal);
+      socket.off('partner-disconnected', onPartnerDisconnected); socket.off('chat-message', onChat);
+      socket.off('report-received', onReportReceived); socket.off('online-count', onOnlineCount);
+      socket.off('you-are-blocked', onBlocked); socket.off('warning', onWarning);
     };
   }, [socket, cleanup, createPeer, handleSignal, makeOffer, roomIdRef, startLocalStream, localStreamRef, isMobile, t, user]);
 
@@ -178,67 +152,47 @@ export default function Home() {
 
   const handleStart = async () => {
     if (!socket) return;
-    
-    // 🔥 NAYA LOGIC: Agar user nahi hai, toh piche se Guest login karo
     if (!user) {
-      try {
-        await loginAsGuest(); 
-        // Login hote hi socket automatically naya ID le lega (ya thoda wait karenge)
-      } catch (err) {
-        alert("Guest login failed. Please check internet.");
-        return;
-      }
+      try { await loginAsGuest(); } catch (err) { alert("Guest login failed."); return; }
     }
-
     setStatus('starting');
     try {
       const localStream = await startLocalStream();
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
-    } catch (err) {
-      setStatus('idle');
-      alert('Camera access failed: ' + err.message);
-      return;
-    }
+    } catch (err) { setStatus('idle'); alert('Camera access failed: ' + err.message); return; }
     socket.emit('find-partner', { interests: getInterestsArray() });
   };
 
-  const handleNext = () => { /* Same as before */ 
+  const handleNext = () => { 
     if (!socket) return;
-    setStatus('waiting');
-    setMessages([]);
-    setPartnerCountry(null);
+    setStatus('waiting'); setMessages([]); setPartnerCountry(null);
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
     socket.emit('next');
-    
   };
 
-  const handleStop = () => { /* Same as before */
+  const handleStop = () => {
     cleanup();
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    setStatus('idle');
-    setMessages([]);
-    setPartnerCountry(null);
+    setStatus('idle'); setMessages([]); setPartnerCountry(null);
     if (socket) socket.emit('stop');
   };
 
-  const handleSendMessage = (text) => { /* Same as before */
+  const handleSendMessage = (text) => {
     if (!socket || !roomIdRef.current) return;
     socket.emit('chat-message', { roomId: roomIdRef.current, message: text });
     setMessages((prev) => [...prev, { from: 'me', text }]);
   };
 
-  const handleReportSubmit = async ({ partnerId, reason }) => { /* Same as before */
+  const handleReportSubmit = async ({ partnerId, reason }) => {
     if (!socket) return;
     socket.emit('report', { partnerId: partnerId || currentPartnerRef.current, reason });
     showToast(t('report.toast.auto'));
     setTimeout(() => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
-      setStatus('idle');
-      setMessages([]);
-      setPartnerCountry(null);
+      setStatus('waiting'); setMessages([]); setPartnerCountry(null);
       socket.emit('next');
       socket.emit('find-partner', { interests: getInterestsArray() });
     }, 500);
@@ -256,13 +210,7 @@ export default function Home() {
       <div className="chat-bg-orb chat-bg-orb-1" />
       <div className="chat-bg-orb chat-bg-orb-2" />
 
-      <TopBar
-        status={status}
-        onlineCount={onlineCount}
-        onHelp={() => setHelpOpen(true)}
-        onToggleChat={() => setShowChat((s) => !s)}
-        chatOpen={showChat}
-      />
+      <TopBar status={status} onlineCount={onlineCount} onHelp={() => setHelpOpen(true)} onToggleChat={() => setShowChat((s) => !s)} chatOpen={showChat} />
 
       <div className="chat-layout">
         <div className="chat-videos-wrap" style={{ position: 'relative' }}>
@@ -272,14 +220,11 @@ export default function Home() {
               <div className="chat-video-tile video-self-tile" style={{ position: 'relative' }}>
                 <video ref={localVideoRef} autoPlay muted playsInline />
                 <div className="chat-video-label">{t('chat.you')}</div>
-
                 {isMobile && (status === 'connected' || status === 'waiting') && (
                   <button onClick={handleStop} style={{ position: 'absolute', bottom: '12px', right: '12px', backgroundColor: 'rgba(239, 68, 68, 0.9)', color: 'white', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '20px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', zIndex: 50, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', backdropFilter: 'blur(4px)', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /></svg>
-                    STOP
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /></svg> STOP
                   </button>
                 )}
-
                 {status === 'idle' && (
                   <div className="self-logo-overlay">
                     <img src="/logo.png" alt="Random Talk" className="self-logo-img" />
@@ -292,18 +237,15 @@ export default function Home() {
                   </div>
                 )}
               </div>
-
               {/* Stranger video */}
               <div className="chat-video-tile video-stranger-tile" style={{ position: 'relative' }}>
                 <video ref={remoteVideoRef} autoPlay playsInline />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
-
                 {status === 'connected' && (
                   <button onClick={() => setReportOpen(true)} style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'rgba(0, 0, 0, 0.4)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }} title="Report User">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
                   </button>
                 )}
-
                 {loadingType && <LoadingOverlay type={loadingType} />}
                 {status === 'idle' && (
                   <div className="idle-overlay">
@@ -313,36 +255,29 @@ export default function Home() {
               </div>
             </div>
           </SwipeWrapper>
-
           {!hideControlBarMobile && (
-            <ControlBar
-              status={status}
-              onStart={handleStart}
-              onNext={handleNext}
-              onStop={handleStop}
-              onReport={() => setReportOpen(true)}
-              country={country}
-              onCountryChange={setCountry}
-            />
+            <ControlBar status={status} onStart={handleStart} onNext={handleNext} onStop={handleStop} onReport={() => setReportOpen(true)} country={country} onCountryChange={setCountry} />
           )}
         </div>
-
         {showChat && (
-          <ChatPanel
-            messages={messages}
-            onSend={handleSendMessage}
-            connected={status === 'connected'}
-            onClose={() => setShowChat(false)}
-            isMobile={isMobile}
-            partnerCountry={partnerCountry}
-            onReportAbuse={() => setReportOpen(true)}
-          />
+          <ChatPanel messages={messages} onSend={handleSendMessage} connected={status === 'connected'} onClose={() => setShowChat(false)} isMobile={isMobile} partnerCountry={partnerCountry} onReportAbuse={() => setReportOpen(true)} />
         )}
       </div>
 
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} onSubmit={handleReportSubmit} partners={partnerHistory} currentPartnerId={currentPartnerRef.current} />
       <WarningModal open={!!warning} level={warning?.level} message={warning?.message} detail={warning?.detail} onClose={() => setWarning(null)} />
+      
+      {/* 🔥 Privacy & Terms Links (Link tag use kiya) */}
+      <div className="w-full text-center mt-6 mb-4 flex justify-center items-center gap-3 text-sm z-10 relative">
+        <Link to="/privacy" className="text-pink-200 hover:text-white underline transition-colors">
+          Privacy Policy
+        </Link>
+        <span className="text-pink-400 text-xs">•</span>
+        <Link to="/terms" className="text-pink-200 hover:text-white underline transition-colors">
+          Terms of Service
+        </Link>
+      </div>
       
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl z-[200] text-sm font-medium">

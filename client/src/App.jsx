@@ -4,13 +4,13 @@ import { LanguageProvider } from './context/LanguageContext';
 import { SocketProvider } from './context/SocketContext';
 import Landing from './pages/Landing';
 import Home from './pages/Home';
+import Privacy from './pages/Privacy'; // 🔥 Naya Import
+import Terms from './pages/Terms';     // 🔥 Naya Import
 
 export default function App() {
   return (
     <BrowserRouter>
-      {/* 1. LanguageProvider sabse bahar (TopBar, ChatPanel ke liye) */}
       <LanguageProvider>
-        {/* 2. AuthProvider (Login state ke liye) */}
         <AuthProvider>
           <Routes>
             {/* Landing Page (Bina Login ke accessible) */}
@@ -25,6 +25,10 @@ export default function App() {
                 </SocketProvider>
               }
             />
+
+            {/* 🔥 Naye Pages Yahan Add Kiye */}
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             
             {/* Default route seedha Landing pe jayega */}
             <Route path="/" element={<Navigate to="/landing" replace />} />
