@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import videoChat from './socket/videoChat.js';
 import authRoutes from './routes/auth.js';
 import countryRoutes from './routes/countries.js';
+import turnRoutes from './routes/turn.js'; // 🔥 Naya Import add kiya
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use(express.json());
 // ---- Routes ----
 app.use('/api/auth', authRoutes);
 app.use('/api/countries', countryRoutes);
+app.use('/api/turn', turnRoutes); // 🔥 Naya Route register kiya
 
 app.get('/', (req, res) => res.send('Random Talk server is running 🚀'));
 

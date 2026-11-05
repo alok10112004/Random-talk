@@ -1,38 +1,5 @@
 import { useRef, useCallback } from 'react';
 
-// ============================================
-// METERED.CA TURN SERVER CONFIG
-// ============================================
-const TURN_USERNAME = '7f3c95826ffbde8af6338539';
-const TURN_PASSWORD = 'B3jr4blV1TLmiV1/'; 
-
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.relay.metered.ca:80' },
-    {
-      urls: 'turn:global.relay.metered.ca:80',
-      username: TURN_USERNAME,
-      credential: TURN_PASSWORD,
-    },
-    {
-      urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-      username: TURN_USERNAME,
-      credential: TURN_PASSWORD,
-    },
-    {
-      urls: 'turn:global.relay.metered.ca:443',
-      username: TURN_USERNAME,
-      credential: TURN_PASSWORD,
-    },
-    {
-      urls: 'turns:global.relay.metered.ca:443?transport=tcp',
-      username: TURN_USERNAME,
-      credential: TURN_PASSWORD,
-    },
-  ],
-  iceCandidatePoolSize: 10,
-};
-
 export function useWebRTC(socket) {
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -61,7 +28,10 @@ export function useWebRTC(socket) {
 
   const createPeer = useCallback(
     (onRemoteStream) => {
-      const pc = new RTCPeerConnection(ICE_SERVERS);
+      // 🔥 TURN credentials use karo jo startLocalStream me fetch honge
+      const iceServers = localStreamRef.current?.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }];
+      
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
 
       pc.onicecandidate = (e) => {
@@ -82,7 +52,7 @@ export function useWebRTC(socket) {
         console.log('📡 PC state:', pc.connectionState);
       };
 
-      // 👇 FORCE HIGH QUALITY BITRATE
+      // Force High Quality Bitrate
       setTimeout(() => {
         try {
           const senders = pc.getSenders();
@@ -93,12 +63,9 @@ export function useWebRTC(socket) {
               params.encodings[0].maxBitrate = 1500000;
               params.encodings[0].maxFramerate = 30;
               sender.setParameters(params);
-              console.log('🎥 Video bitrate forced to 1.5 Mbps');
             }
           });
-        } catch (err) {
-          console.warn('Bitrate force error:', err);
-        }
+        } catch (err) {}
       }, 1000);
 
       return pc;
@@ -111,19 +78,36 @@ export function useWebRTC(socket) {
       throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
     }
 
-    // 🔥 SMART CAMERA SETTINGS (Mobile pe 4:3, Laptop pe 16:9)
+    // 🔥 Cloudflare se TURN credentials fetch karo
+    let dynamicIceServers = [];
+    try {
+      const res = await fetch('https://random-talk-x65v.onrender.com/api/turn/credentials');
+      if (res.ok) {
+        dynamicIceServers = await res.json();
+        console.log('✅ Cloudflare TURN Credentials fetched successfully');
+      }
+    } catch (e) {
+      console.warn('❌ Cloudflare TURN fetch failed, using STUN only');
+    }
+
+    // Agar fetch fail ho jaye toh backup STUN server use karo
+    if (dynamicIceServers.length === 0) {
+      dynamicIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    }
+
+    // 📱 Camera Settings (Mobile pe 4:3 wide view, Laptop pe 16:9)
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const videoConstraints = isMobileDevice 
       ? { 
           width: { ideal: 640, max: 1280 }, 
-          height: { ideal: 480, max: 960 },  // 4:3 ratio (Wider view, no 2x zoom)
+          height: { ideal: 480, max: 960 }, 
           facingMode: 'user',
           frameRate: { ideal: 30 }
         }
       : { 
           width: { ideal: 1280, max: 1920 }, 
-          height: { ideal: 720, max: 1080 }, // 16:9 ratio (Desktop)
+          height: { ideal: 720, max: 1080 }, 
           facingMode: 'user',
           frameRate: { ideal: 30, max: 60 }
         };
@@ -140,22 +124,17 @@ export function useWebRTC(socket) {
       });
 
       localStreamRef.current = stream;
+      // 🔥 Credentials ko stream object me save kar do
+      localStreamRef.current.iceServers = dynamicIceServers; 
       return stream;
     } catch (err) {
       console.error('❌ getUserMedia error:', err.name, err.message);
       let msg = 'Camera access failed. ';
       switch (err.name) {
-        case 'NotAllowedError':
-          msg += 'Please allow camera & microphone.';
-          break;
-        case 'NotFoundError':
-          msg += 'No camera or microphone found.';
-          break;
-        case 'NotReadableError':
-          msg += 'Camera is already in use by another app.';
-          break;
-        default:
-          msg += err.message || 'Unknown error.';
+        case 'NotAllowedError': msg += 'Please allow camera & microphone.'; break;
+        case 'NotFoundError': msg += 'No camera or microphone found.'; break;
+        case 'NotReadableError': msg += 'Camera is already in use by another app.'; break;
+        default: msg += err.message || 'Unknown error.';
       }
       throw new Error(msg);
     }
