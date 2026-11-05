@@ -28,6 +28,10 @@ function pairSockets(io, socketA, socketB) {
   socketA.join(roomId);
   socketB.join(roomId);
 
+  // 🔥 YAHAN FIX HAI: Pichle partner ko save karo
+  socketA.data.lastPartner = socketB;
+  socketB.data.lastPartner = socketA;
+
   socketA.emit('matched', {
     roomId,
     partnerId: socketB.id,
@@ -53,7 +57,7 @@ export default function videoChat(io, socket) {
 
   socket.data.country = 'ANY';
   socket.data.userId = null;
-  socket.data.lastPartner = null; // 🔥 Naya variable: Pichle partner ko yaad rakhne ke liye
+  socket.data.lastPartner = null; // Initialize
 
   socket.on('identify', ({ userId }) => {
     socket.data.userId = userId;
@@ -67,7 +71,7 @@ export default function videoChat(io, socket) {
     socket.data.country = country || 'ANY';
   });
 
-  // ---- Find Partner ----
+  // ---- Find Partner (Start dabane pe) ----
   socket.on('find-partner', () => {
     if (socket.data.userId) {
       const blockedUntil = isBlocked(socket.data.userId);
@@ -89,6 +93,7 @@ export default function videoChat(io, socket) {
     } else {
       waiting.push({ socket, country: myCountry });
       socket.emit('waiting');
+      console.log(`⏳ waiting: ${socket.id}`);
     }
   });
 
@@ -96,7 +101,7 @@ export default function videoChat(io, socket) {
     socket.to(roomId).emit('signal', { data });
   });
 
-  // ---- Next (Instant Skip + Rematch) ----
+  // ---- Next (Instant Skip + Rematch Logic) ----
   socket.on('next', () => {
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
@@ -104,13 +109,13 @@ export default function videoChat(io, socket) {
       socket.leave(roomId);
     });
 
-    // Purane partner ko yaad karo
+    // 1. Purane partner ko yaad karo
     const previousPartner = socket.data.lastPartner;
     
-    // Queue se nikal do
+    // 2. Khud ko queue se nikal do
     waiting = waiting.filter((w) => w.socket.id !== socket.id);
     
-    // Partner ko bhi queue me daal do (taaki wo wapas wait kar sake)
+    // 3. Agar purana partner connected hai, toh usko queue me daal do
     if (previousPartner && previousPartner.connected) {
       if (!waiting.find(w => w.socket.id === previousPartner.id)) {
          waiting.push({ socket: previousPartner, country: previousPartner.data.country });
@@ -118,15 +123,17 @@ export default function videoChat(io, socket) {
     }
 
     const myCountry = socket.data.country;
+    
+    // 4. Queue me koi aur hai kya (naya ya purana)?
     let partnerIndex = waiting.findIndex((w) => w.socket.connected && w.socket.id !== socket.id && (w.country === myCountry || w.country === 'ANY' || myCountry === 'ANY'));
 
     if (partnerIndex !== -1) {
-      // Agar queue me koi hai (naya ya purana), turant match karo
+      // Agar queue me koi hai, toh turant match karo
       const partner = waiting[partnerIndex].socket;
       waiting.splice(partnerIndex, 1);
       pairSockets(io, socket, partner);
     } else {
-      // Agar koi nahi hai, toh wait karo
+      // Agar queue khali hai, toh wait karo
       waiting.push({ socket, country: myCountry });
       socket.emit('waiting');
     }
@@ -161,6 +168,12 @@ export default function videoChat(io, socket) {
         targetSocket.emit('you-are-blocked', { until: userReports[partnerId].blockedUntil, remainingMs: blockDuration });
         waiting = waiting.filter((w) => w.socket.id !== targetSocket.id);
       }
+    } else if (newCount === 4) {
+      if (targetSocket) targetSocket.emit('warning', { level: 3, message: 'FINAL WARNING', detail: 'Next report will result in ban.' });
+    } else if (newCount === 3) {
+      if (targetSocket) targetSocket.emit('warning', { level: 2, message: 'Warning', detail: 'Please follow guidelines.' });
+    } else if (newCount === 2) {
+      if (targetSocket) targetSocket.emit('warning', { level: 1, message: 'Notice', detail: 'Be respectful.' });
     }
     socket.emit('report-received');
   });

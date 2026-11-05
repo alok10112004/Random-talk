@@ -28,7 +28,6 @@ export function useWebRTC(socket) {
 
   const createPeer = useCallback(
     (onRemoteStream) => {
-      // 🔥 TURN credentials use karo jo startLocalStream me fetch honge
       const iceServers = localStreamRef.current?.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }];
       
       const pc = new RTCPeerConnection({ iceServers });
@@ -52,7 +51,6 @@ export function useWebRTC(socket) {
         console.log('📡 PC state:', pc.connectionState);
       };
 
-      // Force High Quality Bitrate
       setTimeout(() => {
         try {
           const senders = pc.getSenders();
@@ -78,7 +76,6 @@ export function useWebRTC(socket) {
       throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
     }
 
-    // 🔥 Cloudflare se TURN credentials fetch karo
     let dynamicIceServers = [];
     try {
       const res = await fetch('https://random-talk-x65v.onrender.com/api/turn/credentials');
@@ -90,19 +87,19 @@ export function useWebRTC(socket) {
       console.warn('❌ Cloudflare TURN fetch failed, using STUN only');
     }
 
-    // Agar fetch fail ho jaye toh backup STUN server use karo
     if (dynamicIceServers.length === 0) {
       dynamicIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
     }
 
-    // 📱 Camera Settings (Wapas se normal 1x wide view)
+    // 📱 Camera Settings (Phone ke liye wide 1x view)
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const videoConstraints = isMobileDevice 
       ? { 
-          // 🔥 Phone ke liye wapas wide view set kiya (2x zoom hataya)
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 }, 
+          // 🔥 Phone ka 2x zoom hatane ke liye width/height kam aur aspect ratio set kiya
+          width: { ideal: 640 }, 
+          height: { ideal: 480 }, 
+          aspectRatio: { ideal: 1.333333 }, // 4:3 ratio (wider view)
           facingMode: 'user',
         }
       : { 
@@ -125,7 +122,6 @@ export function useWebRTC(socket) {
       });
 
       localStreamRef.current = stream;
-      // 🔥 Credentials ko stream object me save kar do
       localStreamRef.current.iceServers = dynamicIceServers; 
       return stream;
     } catch (err) {
