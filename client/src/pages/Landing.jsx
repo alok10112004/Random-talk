@@ -24,25 +24,21 @@ export default function Landing() {
 
   return (
     <div className="pink-landing-wrapper">
-      {/* Background Image */}
       <div className="pink-bg"></div>
 
-      {/* Main Card Center Me */}
-      <div className="pink-card">
-        {/* Logo & Title */}
+      <div className="pink-card" style={{ maxWidth: '360px', padding: '30px 20px' }}> {/* 🔥 Box patla kiya */}
+        
         <div className="logo-area">
-          {/* 🔥 Yahan 'pulse-logo' class add ki hai taaki zoom in/out animation chale */}
           <img 
             src="/logo.png" 
             alt="Random Talk" 
             className="pink-logo pulse-logo" 
-            style={{ height: '100px', width: 'auto' }} 
+            style={{ height: '130px', width: 'auto', marginBottom: '10px' }} // 🔥 Logo bada kiya
           />
-          <h1 className="pink-title">Random Talk</h1>
+          <h1 className="pink-title" style={{ fontSize: '32px', marginTop: '10px' }}>Random Talk</h1>
           <p className="pink-subtitle">Talk to strangers. Anonymously.</p>
         </div>
 
-        {/* Start Button */}
         <button 
           className="pink-start-btn" 
           onClick={handleStart}
@@ -51,7 +47,6 @@ export default function Landing() {
           {loading ? 'Connecting...' : 'Tap to Start'}
         </button>
 
-        {/* Footer */}
         <div className="pink-footer">
           <span onClick={() => { setModalType('terms'); setModalOpen(true); }}>Terms</span>
           <span onClick={() => { setModalType('privacy'); setModalOpen(true); }}>Privacy</span>
