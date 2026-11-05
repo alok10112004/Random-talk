@@ -1,10 +1,34 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 export function useWebRTC(socket) {
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
   const roomIdRef = useRef(null);
+  
+  // 🔥 TURN Credentials ko memory me save karne ke liye
+  const iceServersRef = useRef([{ urls: 'stun:stun.l.google.com:19302' }]);
+
+  // 🔥 PAGE LOAD HOTE HI CREDENTIALS FETCH KARO (Background me)
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchTurnCreds() {
+      try {
+        const res = await fetch('https://random-talk-x65v.onrender.com/api/turn/credentials');
+        if (res.ok && isMounted) {
+          const servers = await res.json();
+          if (servers.length > 0) {
+            iceServersRef.current = servers;
+            console.log('✅ TURN Credentials pre-fetched in background');
+          }
+        }
+      } catch (e) {
+        console.warn('❌ Pre-fetch TURN failed, using default STUN');
+      }
+    }
+    fetchTurnCreds();
+    return () => { isMounted = false; };
+  }, []);
 
   const cleanup = useCallback(() => {
     if (pcRef.current) {
@@ -28,9 +52,8 @@ export function useWebRTC(socket) {
 
   const createPeer = useCallback(
     (onRemoteStream) => {
-      const iceServers = localStreamRef.current?.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }];
-      
-      const pc = new RTCPeerConnection({ iceServers });
+      // 🔥 Pehle se fetch kiye hue credentials use karo
+      const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       pcRef.current = pc;
 
       pc.onicecandidate = (e) => {
@@ -76,34 +99,17 @@ export function useWebRTC(socket) {
       throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
     }
 
-    let dynamicIceServers = [];
-    try {
-      const res = await fetch('https://random-talk-x65v.onrender.com/api/turn/credentials');
-      if (res.ok) {
-        dynamicIceServers = await res.json();
-        console.log('✅ Cloudflare TURN Credentials fetched successfully');
-      }
-    } catch (e) {
-      console.warn('❌ Cloudflare TURN fetch failed, using STUN only');
-    }
-
-    if (dynamicIceServers.length === 0) {
-      dynamicIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
-    }
-
-    // 📱 Camera Settings (Phone ke liye wide 1x view)
+    // 📱 Camera Settings
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const videoConstraints = isMobileDevice 
       ? { 
-          // 🔥 Phone ka 2x zoom hatane ke liye width/height kam aur aspect ratio set kiya
           width: { ideal: 640 }, 
           height: { ideal: 480 }, 
-          aspectRatio: { ideal: 1.333333 }, // 4:3 ratio (wider view)
+          aspectRatio: { ideal: 1.333333 },
           facingMode: 'user',
         }
       : { 
-          // Laptop ke liye wide
           width: { ideal: 1280 }, 
           height: { ideal: 720 }, 
           facingMode: 'user',
@@ -122,7 +128,6 @@ export function useWebRTC(socket) {
       });
 
       localStreamRef.current = stream;
-      localStreamRef.current.iceServers = dynamicIceServers; 
       return stream;
     } catch (err) {
       console.error('❌ getUserMedia error:', err.name, err.message);
