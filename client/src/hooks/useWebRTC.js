@@ -95,19 +95,20 @@ export function useWebRTC(socket) {
       dynamicIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
     }
 
-    // 📱 Camera Settings (Mobile pe 4:3 wide view, Laptop pe 16:9)
+    // 📱 Camera Settings (Wapas se normal 1x wide view)
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const videoConstraints = isMobileDevice 
       ? { 
-          width: { ideal: 640, max: 1280 }, 
-          height: { ideal: 480, max: 960 }, 
+          // 🔥 Phone ke liye wapas wide view set kiya (2x zoom hataya)
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 }, 
           facingMode: 'user',
-          frameRate: { ideal: 30 }
         }
       : { 
-          width: { ideal: 1280, max: 1920 }, 
-          height: { ideal: 720, max: 1080 }, 
+          // Laptop ke liye wide
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 }, 
           facingMode: 'user',
           frameRate: { ideal: 30, max: 60 }
         };

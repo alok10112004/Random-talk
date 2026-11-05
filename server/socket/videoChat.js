@@ -22,56 +22,27 @@ function isBlocked(userId) {
   return null;
 }
 
-// 🔥 Naya function: Matchmaking logic ko alag nikaal diya taaki bar-bar use kar sakein
-function attemptMatch(socket) {
-  // Agar socket disconnect ho gaya hai toh kuch mat karo
-  if (!socket.connected) return;
+// 🔥 DONO KO MATCH KARNE KA FUNCTION
+function pairSockets(io, socketA, socketB) {
+  const roomId = `${socketA.id}#${socketB.id}`;
+  socketA.join(roomId);
+  socketB.join(roomId);
 
-  // Purani entry hata do
-  waiting = waiting.filter((w) => w.socket.id !== socket.id);
+  socketA.emit('matched', {
+    roomId,
+    partnerId: socketB.id,
+    initiator: true,
+    partnerCountry: socketB.data.country || 'ANY',
+  });
 
-  const myCountry = socket.data.country;
-  let partnerIndex = waiting.findIndex((w) => w.country === myCountry && w.socket.connected);
+  socketB.emit('matched', {
+    roomId,
+    partnerId: socketA.id,
+    initiator: false,
+    partnerCountry: socketA.data.country || 'ANY',
+  });
 
-  if (partnerIndex === -1 && myCountry !== 'ANY') {
-    partnerIndex = waiting.findIndex((w) => w.country === 'ANY' && w.socket.connected);
-  }
-  if (partnerIndex === -1 && myCountry === 'ANY') {
-    partnerIndex = waiting.findIndex((w) => w.socket.connected);
-  }
-
-  if (partnerIndex !== -1) {
-    const partner = waiting[partnerIndex].socket;
-    waiting.splice(partnerIndex, 1);
-
-    if (partner.data.cooldownTimer) {
-      clearTimeout(partner.data.cooldownTimer);
-      partner.data.cooldownTimer = null;
-    }
-
-    const roomId = `${socket.id}#${partner.id}`;
-    socket.join(roomId);
-    partner.join(roomId);
-
-    socket.emit('matched', {
-      roomId,
-      partnerId: partner.id,
-      initiator: true,
-      partnerCountry: partner.data.country || 'ANY',
-    });
-
-    partner.emit('matched', {
-      roomId,
-      partnerId: socket.id,
-      initiator: false,
-      partnerCountry: socket.data.country || 'ANY',
-    });
-    console.log(`✅ matched: ${socket.id} <-> ${partner.id}`);
-  } else {
-    waiting.push({ socket, country: myCountry });
-    socket.emit('waiting');
-    console.log(`⏳ waiting: ${socket.id}`);
-  }
+  console.log(`✅ matched: ${socketA.id} <-> ${socketB.id}`);
 }
 
 export default function videoChat(io, socket) {
@@ -82,7 +53,7 @@ export default function videoChat(io, socket) {
 
   socket.data.country = 'ANY';
   socket.data.userId = null;
-  socket.data.cooldownTimer = null; 
+  socket.data.lastPartner = null; // 🔥 Naya variable: Pichle partner ko yaad rakhne ke liye
 
   socket.on('identify', ({ userId }) => {
     socket.data.userId = userId;
@@ -105,14 +76,27 @@ export default function videoChat(io, socket) {
         return;
       }
     }
-    attemptMatch(socket); // 🔥 Naya function call kiya
+
+    waiting = waiting.filter((w) => w.socket.id !== socket.id);
+    const myCountry = socket.data.country;
+
+    let partnerIndex = waiting.findIndex((w) => w.socket.connected && (w.country === myCountry || w.country === 'ANY' || myCountry === 'ANY'));
+
+    if (partnerIndex !== -1) {
+      const partner = waiting[partnerIndex].socket;
+      waiting.splice(partnerIndex, 1);
+      pairSockets(io, socket, partner);
+    } else {
+      waiting.push({ socket, country: myCountry });
+      socket.emit('waiting');
+    }
   });
 
   socket.on('signal', ({ roomId, data }) => {
     socket.to(roomId).emit('signal', { data });
   });
 
-  // ---- Next (Skip) ----
+  // ---- Next (Instant Skip + Rematch) ----
   socket.on('next', () => {
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
@@ -120,27 +104,36 @@ export default function videoChat(io, socket) {
       socket.leave(roomId);
     });
 
-    waiting = waiting.filter((w) => w.socket.id !== socket.id);
-    if (socket.data.cooldownTimer) clearTimeout(socket.data.cooldownTimer);
-
-    console.log(`⏭️ ${socket.id} skipped. Cooldown for 3s...`);
+    // Purane partner ko yaad karo
+    const previousPartner = socket.data.lastPartner;
     
-    // 3 second wait karega, phir khud match karwayega
-    socket.data.cooldownTimer = setTimeout(() => {
-      if (socket.connected) {
-        console.log(`🔄 Cooldown over, finding partner for: ${socket.id}`);
-        attemptMatch(socket); // 🔥 Timer khatam hone pe direct match karwao
+    // Queue se nikal do
+    waiting = waiting.filter((w) => w.socket.id !== socket.id);
+    
+    // Partner ko bhi queue me daal do (taaki wo wapas wait kar sake)
+    if (previousPartner && previousPartner.connected) {
+      if (!waiting.find(w => w.socket.id === previousPartner.id)) {
+         waiting.push({ socket: previousPartner, country: previousPartner.data.country });
       }
-      socket.data.cooldownTimer = null;
-    }, 3000); 
+    }
+
+    const myCountry = socket.data.country;
+    let partnerIndex = waiting.findIndex((w) => w.socket.connected && w.socket.id !== socket.id && (w.country === myCountry || w.country === 'ANY' || myCountry === 'ANY'));
+
+    if (partnerIndex !== -1) {
+      // Agar queue me koi hai (naya ya purana), turant match karo
+      const partner = waiting[partnerIndex].socket;
+      waiting.splice(partnerIndex, 1);
+      pairSockets(io, socket, partner);
+    } else {
+      // Agar koi nahi hai, toh wait karo
+      waiting.push({ socket, country: myCountry });
+      socket.emit('waiting');
+    }
   });
 
   socket.on('stop', () => {
     waiting = waiting.filter((w) => w.socket.id !== socket.id);
-    if (socket.data.cooldownTimer) {
-      clearTimeout(socket.data.cooldownTimer);
-      socket.data.cooldownTimer = null;
-    }
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
       socket.to(roomId).emit('partner-disconnected');
@@ -152,14 +145,15 @@ export default function videoChat(io, socket) {
     socket.to(roomId).emit('chat-message', { message, from: socket.id });
   });
 
-  // Baaki report aur disconnect ka code same hai...
   socket.on('report', ({ reason, partnerId }) => {
     if (!partnerId) { socket.emit('report-received'); return; }
     if (!userReports[partnerId]) { userReports[partnerId] = { count: 0, blockedUntil: null }; }
     userReports[partnerId].count++;
     const newCount = userReports[partnerId].count;
+    
     let targetSocket = null;
     io.sockets.sockets.forEach((s) => { if (s.data.userId === partnerId) targetSocket = s; });
+
     if (newCount >= REPORTS_TO_BLOCK) {
       const blockDuration = getRandomBlockDuration();
       userReports[partnerId].blockedUntil = Date.now() + blockDuration;
@@ -173,7 +167,6 @@ export default function videoChat(io, socket) {
 
   socket.on('disconnect', () => {
     waiting = waiting.filter((w) => w.socket.id !== socket.id);
-    if (socket.data.cooldownTimer) clearTimeout(socket.data.cooldownTimer);
     onlineCount = Math.max(0, onlineCount - 1);
     io.emit('online-count', onlineCount);
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
