@@ -36,7 +36,6 @@ export default function videoChat(io, socket) {
 
   socket.data.country = 'ANY';
   socket.data.userId = null;
-  // 🔥 Cooldown timer track karne ke liye
   socket.data.cooldownTimer = null; 
 
   // ---- Identify ----
@@ -60,7 +59,6 @@ export default function videoChat(io, socket) {
 
   // ---- Find partner ----
   socket.on('find-partner', () => {
-    // Blocked check
     if (socket.data.userId) {
       const blockedUntil = isBlocked(socket.data.userId);
       if (blockedUntil) {
@@ -82,14 +80,12 @@ export default function videoChat(io, socket) {
       (w) => w.country === myCountry && w.socket.connected
     );
 
-    // ANY fallback
     if (partnerIndex === -1 && myCountry !== 'ANY') {
       partnerIndex = waiting.findIndex(
         (w) => w.country === 'ANY' && w.socket.connected
       );
     }
 
-    // Koi bhi
     if (partnerIndex === -1 && myCountry === 'ANY') {
       partnerIndex = waiting.findIndex((w) => w.socket.connected);
     }
@@ -98,7 +94,6 @@ export default function videoChat(io, socket) {
       const partner = waiting[partnerIndex].socket;
       waiting.splice(partnerIndex, 1);
 
-      // Agar partner ka koi cooldown chal raha hai toh use clear karo
       if (partner.data.cooldownTimer) {
         clearTimeout(partner.data.cooldownTimer);
         partner.data.cooldownTimer = null;
@@ -146,19 +141,21 @@ export default function videoChat(io, socket) {
       socket.leave(roomId);
     });
 
-    // 🔥 SKIP COOLDOWN: 3 second ka wait taaki wapas usi se na jud jaye
-    waiting = waiting.filter((w) => w.socket.id !== socket.id); // Pehle queue se hatao
+    waiting = waiting.filter((w) => w.socket.id !== socket.id);
     
-    // Agar pehle se koi timer chal raha hai toh clear karo
     if (socket.data.cooldownTimer) clearTimeout(socket.data.cooldownTimer);
 
     console.log(`⏭️ ${socket.id} skipped. Cooldown for 3s...`);
     
+    // 🔥 3 second baad khud hi wapas queue me add hoga
     socket.data.cooldownTimer = setTimeout(() => {
-      // 3 second baad check karo ki user connect hai ya nahi
       if (socket.connected) {
-        console.log(`🔄 Cooldown over, joining queue: ${socket.id}`);
-        // Wapas queue me daal do (frontend se emit find-partner bhi ho sakta hai, par safety ke liye)
+        console.log(`🔄 Cooldown over, adding to queue: ${socket.id}`);
+        
+        waiting = waiting.filter((w) => w.socket.id !== socket.id);
+        waiting.push({ socket, country: socket.data.country });
+        
+        // Frontend ko signal bhej do ki tu waiting pe hai
         socket.emit('waiting'); 
       }
       socket.data.cooldownTimer = null;
@@ -187,21 +184,34 @@ export default function videoChat(io, socket) {
 
   // ---- Report ----
   socket.on('report', ({ reason, partnerId }) => {
-    // ... (report wala code same rahega, isme koi change nahi hai)
     console.log(`🚩 REPORT: ${socket.data.userId} reported ${partnerId} | reason: ${reason}`);
-    if (!partnerId) { socket.emit('report-received'); return; }
-    if (!userReports[partnerId]) { userReports[partnerId] = { count: 0, blockedUntil: null }; }
+    if (!partnerId) {
+      socket.emit('report-received');
+      return;
+    }
+    if (!userReports[partnerId]) {
+      userReports[partnerId] = { count: 0, blockedUntil: null };
+    }
     userReports[partnerId].count++;
     const newCount = userReports[partnerId].count;
+    
     let targetSocket = null;
-    io.sockets.sockets.forEach((s) => { if (s.data.userId === partnerId) { targetSocket = s; } });
+    io.sockets.sockets.forEach((s) => {
+      if (s.data.userId === partnerId) {
+        targetSocket = s;
+      }
+    });
 
     if (newCount >= REPORTS_TO_BLOCK) {
       const blockDuration = getRandomBlockDuration();
       const blockedUntil = Date.now() + blockDuration;
       userReports[partnerId].blockedUntil = blockedUntil;
       if (targetSocket) {
-        targetSocket.emit('you-are-blocked', { until: blockedUntil, remainingMs: blockDuration, durationHours: Math.round(blockDuration / (60 * 60 * 1000)) });
+        targetSocket.emit('you-are-blocked', {
+          until: blockedUntil,
+          remainingMs: blockDuration,
+          durationHours: Math.round(blockDuration / (60 * 60 * 1000)),
+        });
         waiting = waiting.filter((w) => w.socket.id !== targetSocket.id);
       }
     } else if (newCount === 4) {
