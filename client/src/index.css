@@ -2352,3 +2352,19 @@ body {
 #root {
   background-color: transparent !important;
 }
+/* 🔥 Logo Zoom In / Zoom Out Animation */
+@keyframes pulseLogo {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15); /* 15% bada hoga */
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.pulse-logo {
+  animation: pulseLogo 2.5s ease-in-out infinite;
+}

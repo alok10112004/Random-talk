@@ -1,30 +1,27 @@
 export default function HeroAnimation() {
   return (
-    <div className="flex items-center justify-center gap-4 mb-2 relative">
-      {/* Left Card */}
-      <div className="relative w-16 h-24 bg-pink-900/40 rounded-xl border border-pink-400/50 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(244,114,182,0.3)] backdrop-blur-sm">
-        <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-        <div className="flex flex-col items-center gap-1">
-          <div className="w-5 h-5 bg-pink-300 rounded-full" />
-          <div className="w-8 h-4 bg-pink-300 rounded-t-full" />
-        </div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '160px', width: '100%', marginBottom: '10px' }}>
+      
+      {/* Left Card (Ladki) */}
+      <div style={{ position: 'relative', width: '100px', height: '100px', backgroundColor: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 20px rgba(236, 72, 153, 0.2)', border: '3px solid #fbcfe8' }}>
+        <img 
+          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" 
+          alt="Girl" 
+          // 🔥 objectPosition: 'top' add kiya taaki upar se na kate
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} 
+        />
       </div>
 
-      {/* Connecting Line */}
-      <div className="w-6 h-0.5 bg-pink-400/50" />
-
-      {/* Right Card */}
-      <div className="relative w-16 h-24 bg-pink-900/40 rounded-xl border border-pink-400/50 flex flex-col items-center justify-center shadow-[0_0_20px_rgba(244,114,182,0.3)] backdrop-blur-sm">
-        <div className="absolute top-2 right-2 text-pink-300">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-          </svg>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <div className="w-5 h-5 bg-pink-300 rounded-full" />
-          <div className="w-8 h-4 bg-pink-300 rounded-t-full" />
-        </div>
+      {/* Right Card (Ladka) */}
+      <div style={{ position: 'relative', width: '100px', height: '100px', backgroundColor: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 20px rgba(236, 72, 153, 0.2)', border: '3px solid #fbcfe8' }}>
+        <img 
+          src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80" 
+          alt="Boy" 
+          // 🔥 objectPosition: 'top' add kiya taaki upar se na kate
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} 
+        />
       </div>
+
     </div>
   );
 }
