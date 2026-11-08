@@ -8,29 +8,34 @@ export function useWebRTC(socket) {
   
   // 🔥 TURN Credentials ko memory me save karne ke liye
   const iceServersRef = useRef([{ urls: 'stun:stun.l.google.com:19302' }]);
+  // 🔥 Promise banaya taaki PeerConnection TURN aane ka wait kare
+  const turnPromiseRef = useRef(null); 
 
-  // 🔥 PAGE LOAD HOTE HI CREDENTIALS FETCH KARO (Background me)
   useEffect(() => {
     let isMounted = true;
     
     async function fetchTurnCreds() {
       try {
-        // 🔥 FIX: Yahan bhi Vercel ka variable use kiya hai
         const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
         const res = await fetch(`${baseUrl}/api/turn/credentials`);
         
         if (res.ok && isMounted) {
-          const servers = await res.json();
-          if (servers.length > 0) {
+          const data = await res.json();
+          // 🔥 FIX: Cloudflare object bhejta hai, array nahi
+          const servers = data.iceServers ? data.iceServers : data; 
+          
+          if (servers && servers.length > 0) {
             iceServersRef.current = servers;
-            console.log('✅ TURN Credentials pre-fetched in background');
+            console.log('✅ TURN Credentials pre-fetched:', servers);
           }
         }
       } catch (e) {
-        console.warn('❌ Pre-fetch TURN failed, using default STUN');
+        console.warn('❌ Pre-fetch TURN failed, using default STUN', e);
       }
     }
-    fetchTurnCreds();
+    
+    // Promise save karo taaki createPeer iska wait kar sake
+    turnPromiseRef.current = fetchTurnCreds();
     return () => { isMounted = false; };
   }, []);
 
@@ -54,9 +59,14 @@ export function useWebRTC(socket) {
     roomIdRef.current = null;
   }, []);
 
+  // 🔥 createPeer ko async banaya taaki TURN fetch hone ka wait kare
   const createPeer = useCallback(
-    (onRemoteStream) => {
-      // 🔥 Pehle se fetch kiye hue credentials use karo
+    async (onRemoteStream) => {
+      // TURN credentials aane tak wait karo
+      if (turnPromiseRef.current) {
+        await turnPromiseRef.current;
+      }
+
       const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       pcRef.current = pc;
 
@@ -103,32 +113,16 @@ export function useWebRTC(socket) {
       throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
     }
 
-    // 📱 Camera Settings
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     const videoConstraints = isMobileDevice 
-      ? { 
-          width: { ideal: 640 }, 
-          height: { ideal: 480 }, 
-          aspectRatio: { ideal: 1.333333 },
-          facingMode: 'user',
-        }
-      : { 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 }, 
-          facingMode: 'user',
-          frameRate: { ideal: 30, max: 60 }
-        };
+      ? { width: { ideal: 640 }, height: { ideal: 480 }, aspectRatio: { ideal: 1.333333 }, facingMode: 'user' }
+      : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user', frameRate: { ideal: 30, max: 60 } };
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,
-        },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 },
       });
 
       localStreamRef.current = stream;
@@ -177,10 +171,7 @@ export function useWebRTC(socket) {
     if (!pc) return;
 
     try {
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       await pc.setLocalDescription(offer);
       socket.emit('signal', {
         roomId: roomIdRef.current,
@@ -192,14 +183,6 @@ export function useWebRTC(socket) {
   }, [socket]);
 
   return {
-    pcRef,
-    localStreamRef,
-    remoteStreamRef,
-    roomIdRef,
-    createPeer,
-    startLocalStream,
-    handleSignal,
-    makeOffer,
-    cleanup,
+    pcRef, localStreamRef, remoteStreamRef, roomIdRef, createPeer, startLocalStream, handleSignal, makeOffer, cleanup,
   };
 }

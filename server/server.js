@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 import videoChat from './socket/videoChat.js';
 import authRoutes from './routes/auth.js';
 import countryRoutes from './routes/countries.js';
-import turnRoutes from './routes/turn.js'; // 🔥 Naya Import add kiya
+import turnRoutes from './routes/turn.js'; 
 
 dotenv.config();
 
@@ -19,11 +19,10 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:5173',
   'http://localhost:3000'
-].filter(Boolean); // Khali values hata do
+].filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Agar origin nahi hai (jaise mobile apps ya postman), ya allowed list me hai
     if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
       callback(null, true);
     } else {
@@ -33,14 +32,13 @@ const corsOptions = {
   credentials: true,
 };
 
-// ---- Middleware ----
 app.use(cors(corsOptions));
 app.use(express.json());
 
 // ---- Routes ----
 app.use('/api/auth', authRoutes);
 app.use('/api/countries', countryRoutes);
-app.use('/api/turn', turnRoutes); // 🔥 Naya Route register kiya
+app.use('/api/turn', turnRoutes); 
 
 app.get('/', (req, res) => res.send('Random Talk server is running 🚀'));
 
