@@ -8,7 +8,7 @@ const OPTIONS = [
 ];
 
 export default function GenderSelector({ selected, onSelect }) {
-  const { t, theme } = useLanguage();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -22,11 +22,10 @@ export default function GenderSelector({ selected, onSelect }) {
 
   const current = OPTIONS.find((o) => o.id === selected) || OPTIONS[0];
 
-  // 🔥 FIX: Gender Button ko Blue 3D banaya
   const buttonStyle = {
     width: '100%',
     height: '100%',
-    background: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)', // Blue Gradient
+    background: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)',
     color: '#fff',
     border: '1px solid #1e40af',
     borderRadius: '12px',
@@ -47,7 +46,11 @@ export default function GenderSelector({ selected, onSelect }) {
   };
 
   return (
-    <div ref={dropdownRef} className="gender-selector-wrapper" style={{ position: 'relative', flex: 1, width: '100%' }}>
+    <div 
+      ref={dropdownRef} 
+      className="gender-selector-wrapper" 
+      style={{ position: 'relative', width: '100%', height: '100%' }} // 🔥 FIX: height 100%
+    >
       <button onClick={() => setOpen(!open)} style={buttonStyle}>
         <span style={{ fontSize: '20px', color: '#fff', fontWeight: 700 }}>
           {current.symbol}
@@ -57,43 +60,22 @@ export default function GenderSelector({ selected, onSelect }) {
 
       {open && (
         <div style={{
-            position: 'absolute',
-            bottom: '110%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '200px',
-            background: '#131823',
-            border: '1px solid rgba(96, 165, 250, 0.3)',
-            borderRadius: '12px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-            overflow: 'hidden',
-            zIndex: 100,
+            position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
+            width: '200px', background: '#131823', border: '1px solid rgba(96, 165, 250, 0.3)',
+            borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden', zIndex: 100,
         }}>
           {OPTIONS.map((o) => {
             const isSelected = selected === o.id;
             return (
               <button
-                key={o.id}
-                onClick={() => { onSelect(o.id); setOpen(false); }}
+                key={o.id} onClick={() => { onSelect(o.id); setOpen(false); }}
                 style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
                   background: isSelected ? 'rgba(96, 165, 250, 0.2)' : 'transparent',
-                  border: 'none',
-                  color: '#fff',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '15px',
-                  fontFamily: 'inherit',
-                  fontWeight: 600,
+                  border: 'none', color: '#fff', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontFamily: 'inherit', fontWeight: 600,
                 }}
               >
-                <span style={{ fontSize: '20px', width: '24px', textAlign: 'center', color: o.color, fontWeight: 700 }}>
-                  {o.symbol}
-                </span>
+                <span style={{ fontSize: '20px', width: '24px', textAlign: 'center', color: o.color, fontWeight: 700 }}>{o.symbol}</span>
                 <span style={{ flex: 1 }}>{t(o.labelKey)}</span>
               </button>
             );
