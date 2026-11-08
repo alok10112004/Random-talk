@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import fetch from 'node-fetch'; // 🔥 ADDED
 import videoChat from './socket/videoChat.js';
 import authRoutes from './routes/auth.js';
 import countryRoutes from './routes/countries.js';
@@ -14,7 +15,6 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// 🔥 CORS FIX: Sabhi Vercel links aur localhost ko allow karo
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:5173',
@@ -41,6 +41,27 @@ app.use('/api/countries', countryRoutes);
 app.use('/api/turn', turnRoutes); 
 
 app.get('/', (req, res) => res.send('Random Talk server is running 🚀'));
+
+// 🔥 ADDED TEST ROUTE
+app.get('/test-turn', async (req, res) => {
+  try {
+    const keyId = process.env.TURN_KEY_ID;
+    const token = process.env.TURN_KEY_API_TOKEN;
+    if (!keyId || !token) {
+      return res.status(500).json({ error: 'Missing TURN keys in Variables' });
+    }
+    const response = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ttl: 86400 })
+    });
+    const data = await response.json();
+    res.json(data.iceServers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// 🔥 END TEST ROUTE
 
 // ---- Socket.io ----
 const io = new Server(server, {
