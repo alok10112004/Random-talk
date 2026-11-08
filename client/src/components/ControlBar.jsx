@@ -25,7 +25,6 @@ export default function ControlBar({
 
   const buttonHeight = isMobile ? '52px' : '64px';
 
-  // Common style for all buttons
   const btnBase = {
     height: '100%',
     width: '100%',
@@ -87,35 +86,35 @@ export default function ControlBar({
         alignItems: 'stretch'
       }}
     >
-      {/* Start Button */}
+      {/* 1. Start Button */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         {status === 'idle' && <button onClick={onStart} style={btnGreen}>▶ {t('control.start')}</button>}
         {status === 'waiting' && <button disabled style={{ ...btnGreen, ...disabledStyle }}>▶ {t('control.start')}</button>}
         {status === 'connected' && <button onClick={onNext} style={btnGreen}>⏭ {t('control.next')}</button>}
       </div>
 
-      {/* Country Button */}
+      {/* 2. Stop Button (Ab Start ke just baad hai) */}
+      <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
+        <button onClick={onStop} disabled={status === 'idle'} style={{ ...btnOrange, ...(status === 'idle' ? disabledStyle : {}) }}>
+          ⏹ {t('control.stop')}
+        </button>
+      </div>
+
+      {/* 3. Country Button */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         <CountrySelector selected={country} onSelect={onCountryChange} />
       </div>
 
-      {/* Gender Button */}
+      {/* 4. Gender Button */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         <GenderSelector selected={gender} onSelect={setGender} />
       </div>
 
-      {/* Stop & Report (Desktop Only) */}
+      {/* 5. Report Button (Desktop Only) */}
       {!isMobile && (
-        <>
-          <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
-            <button onClick={onStop} disabled={status === 'idle'} style={{ ...btnOrange, ...(status === 'idle' ? disabledStyle : {}) }}>
-              ⏹ {t('control.stop')}
-            </button>
-          </div>
-          <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
-            <button onClick={onReport} style={btnRed}>🚩 {t('control.report')}</button>
-          </div>
-        </>
+        <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
+          <button onClick={onReport} style={btnRed}>🚩 {t('control.report')}</button>
+        </div>
       )}
     </div>
   );
