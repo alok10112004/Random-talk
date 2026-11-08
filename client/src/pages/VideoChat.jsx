@@ -16,7 +16,7 @@ function VideoChat() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("idle");
   const [gender, setGender] = useState("male");
-  const [onlineCount] = useState(364488);
+  const [onlineCount] = useState(364488); // Dummy count (jab tak socket se real nahi aata)
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   const [iceServers, setIceServers] = useState([{ urls: "stun:stun.l.google.com:19302" }]);
@@ -187,32 +187,31 @@ function VideoChat() {
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black text-white overflow-hidden flex flex-col">
       
-      {/* 🔥 TopBar Header - Ab call ke dauran bhi dikhega (overlay) */}
+      {/* 🔥 TopBar Header - Hamesha dikhega */}
       <div 
         className="absolute top-0 left-0 w-full flex justify-between items-center p-3 z-50"
         style={{ 
-          background: isInCall ? 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' : '#131823' 
+          background: isInCall ? 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' : 'transparent' 
         }}
       >
-        <h1 className="text-xl font-bold text-orange-500">📺 Iconic TV</h1>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-300 font-medium">
-            🟢 {onlineCount.toLocaleString()} online
-          </span>
-          {!isInCall && (
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 px-2 py-1 rounded text-xs"
-            >
-              Logout
-            </button>
-          )}
+          <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
+          <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-green-500/30">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span className="text-xs font-bold text-green-400">
+              {onlineCount} online
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          <button className="bg-white/10 p-2 rounded-lg hover:bg-white/20">💬</button>
+          <button className="bg-white/10 p-2 rounded-lg hover:bg-white/20">?</button>
         </div>
       </div>
 
       {/* 🔥 Main Area: 50-50 Split */}
-      {/* pt-14 diya hai taaki video TopBar ke neeche se shuru ho */}
-      <div className="flex-1 flex flex-col min-h-0 relative pt-14">
+      <div className="flex-1 flex flex-col min-h-0 relative pt-16">
         
         {/* Stranger Video (Top) */}
         <div className="flex-1 relative bg-gray-900 border-b border-gray-700">
