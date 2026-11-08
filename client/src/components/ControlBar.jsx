@@ -86,31 +86,33 @@ export default function ControlBar({
         alignItems: 'stretch'
       }}
     >
-      {/* 1. Start Button */}
+      {/* 1. Start Button - Hamesha dikhega */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         {status === 'idle' && <button onClick={onStart} style={btnGreen}>▶ {t('control.start')}</button>}
         {status === 'waiting' && <button disabled style={{ ...btnGreen, ...disabledStyle }}>▶ {t('control.start')}</button>}
         {status === 'connected' && <button onClick={onNext} style={btnGreen}>⏭ {t('control.next')}</button>}
       </div>
 
-      {/* 2. Stop Button (Ab Start ke just baad hai) */}
-      <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
-        <button onClick={onStop} disabled={status === 'idle'} style={{ ...btnOrange, ...(status === 'idle' ? disabledStyle : {}) }}>
-          ⏹ {t('control.stop')}
-        </button>
-      </div>
+      {/* 🔥 2. Stop Button - SIRF LAPTOP PAR (Mobile par nahi dikhega) */}
+      {!isMobile && (
+        <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
+          <button onClick={onStop} disabled={status === 'idle'} style={{ ...btnOrange, ...(status === 'idle' ? disabledStyle : {}) }}>
+            ⏹ {t('control.stop')}
+          </button>
+        </div>
+      )}
 
-      {/* 3. Country Button */}
+      {/* 3. Country Button - Hamesha dikhega */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         <CountrySelector selected={country} onSelect={onCountryChange} />
       </div>
 
-      {/* 4. Gender Button */}
+      {/* 4. Gender Button - Hamesha dikhega */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         <GenderSelector selected={gender} onSelect={setGender} />
       </div>
 
-      {/* 5. Report Button (Desktop Only) */}
+      {/* 🔥 5. Report Button - SIRF LAPTOP PAR (Mobile par flag ke through hai) */}
       {!isMobile && (
         <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
           <button onClick={onReport} style={btnRed}>🚩 {t('control.report')}</button>
