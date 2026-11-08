@@ -12,9 +12,13 @@ export function useWebRTC(socket) {
   // 🔥 PAGE LOAD HOTE HI CREDENTIALS FETCH KARO (Background me)
   useEffect(() => {
     let isMounted = true;
+    
     async function fetchTurnCreds() {
       try {
-        const res = await fetch('https://random-talk-x65v.onrender.com/api/turn/credentials');
+        // 🔥 FIX: Yahan bhi Vercel ka variable use kiya hai
+        const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+        const res = await fetch(`${baseUrl}/api/turn/credentials`);
+        
         if (res.ok && isMounted) {
           const servers = await res.json();
           if (servers.length > 0) {

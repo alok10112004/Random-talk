@@ -9,10 +9,13 @@ export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // 🔥 HARDCODED RENDER URL (Vercel variable ka locha khatam)
-    const s = io('https://random-talk-x65v.onrender.com', {
+    // 🔥 Vercel ke environment variable se URL aayega (fallback localhost)
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+
+    const s = io(serverUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling'], // Mobile network ke liye polling fallback
+      // 'polling' pehle try hoga taaki mobile network par block na ho
+      transports: ['polling', 'websocket'], 
     });
 
     s.on('connect', () => console.log('🟢 socket connected successfully:', s.id));
