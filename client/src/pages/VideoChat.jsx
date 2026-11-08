@@ -16,7 +16,9 @@ function VideoChat() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("idle");
   const [gender, setGender] = useState("male");
-  const [onlineCount] = useState(364488); // Dummy count (jab tak socket se real nahi aata)
+  
+  // 🔥 Online count state (agar socket se aata hai to update hoga, warna dummy)
+  const [onlineCount, setOnlineCount] = useState(364488); 
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   const [iceServers, setIceServers] = useState([{ urls: "stun:stun.l.google.com:19302" }]);
@@ -30,6 +32,14 @@ function VideoChat() {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
+  // 🔥 Socket se online count listen karo (Agar backend bhej raha hai)
+  useEffect(() => {
+    socket.on("online-count", (count) => {
+      setOnlineCount(count);
+    });
+    return () => socket.off("online-count");
+  }, []);
+
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
@@ -39,7 +49,6 @@ function VideoChat() {
           const servers = await res.json();
           if (servers && servers.length > 0) {
             setIceServers(servers);
-            console.log('✅ TURN Credentials loaded');
           }
         }
       } catch (e) {
@@ -68,9 +77,7 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      const peer = new RTCPeerConnection({
-        iceServers: iceServers,
-      });
+      const peer = new RTCPeerConnection({ iceServers });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
@@ -187,19 +194,21 @@ function VideoChat() {
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black text-white overflow-hidden flex flex-col">
       
-      {/* 🔥 TopBar Header - Hamesha dikhega */}
+      {/* 🔥 TOPBAR (Fixed) - Ab hamesha rahega aur online count dikhayega */}
       <div 
         className="absolute top-0 left-0 w-full flex justify-between items-center p-3 z-50"
         style={{ 
-          background: isInCall ? 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' : 'transparent' 
+          background: isInCall ? 'linear-gradient(to bottom, rgba(0,0,0,0.9), transparent)' : 'transparent' 
         }}
       >
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
-          <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-green-500/30">
+          
+          {/* 🔥 ONLINE COUNT PILL */}
+          <div className="flex items-center gap-1.5 bg-black/50 px-3 py-1.5 rounded-full border border-green-500/40 backdrop-blur-sm">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             <span className="text-xs font-bold text-green-400">
-              {onlineCount} online
+              {onlineCount.toLocaleString()} online
             </span>
           </div>
         </div>
@@ -210,10 +219,10 @@ function VideoChat() {
         </div>
       </div>
 
-      {/* 🔥 Main Area: 50-50 Split */}
+      {/* 🔥 MAIN VIDEO AREA (50-50) */}
       <div className="flex-1 flex flex-col min-h-0 relative pt-16">
         
-        {/* Stranger Video (Top) */}
+        {/* Stranger Video (Top Half) */}
         <div className="flex-1 relative bg-gray-900 border-b border-gray-700">
           <video
             ref={remoteVideoRef}
@@ -244,7 +253,7 @@ function VideoChat() {
           )}
         </div>
 
-        {/* Apna Video (Bottom) */}
+        {/* Apna Video (Bottom Half) */}
         <div className="flex-1 relative bg-gray-900">
           <video
             ref={localVideoRef}
@@ -268,7 +277,7 @@ function VideoChat() {
         </div>
       </div>
 
-      {/* 🔥 Bottom Controls - Sirf idle state mein dikhega */}
+      {/* 🔥 BOTTOM CONTROL BAR (Sirf idle state mein) */}
       {!isInCall && (
         <div className="flex-shrink-0 p-4 bg-black z-20">
           <div className="grid grid-cols-3 gap-2 mb-2">
