@@ -40,51 +40,48 @@ export default function CountrySelector({ selected, onSelect }) {
 
   const Flag = selected && selected !== 'ANY' ? Flags[selected] : null;
 
-  // Theme-based button styles
+  // 🔥 FIX: Country Button ko bilkul Start Button jaisa 3D banaya
   const buttonStyle = isLight
     ? {
         width: '100%',
-        height: '64px',
-        background:
-          'linear-gradient(180deg, #ffffff 0%, #f3f4f6 50%, #e5e7eb 100%)',
+        height: '100%',
+        background: 'linear-gradient(180deg, #ffffff 0%, #f3f4f6 50%, #e5e7eb 100%)',
         color: '#1f2937',
         border: '1px solid #d1d5db',
         borderRadius: '12px',
-        fontSize: '18px',
+        fontSize: '15px',
         fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '10px',
+        gap: '6px',
         cursor: 'pointer',
         fontFamily: 'inherit',
-        padding: '0 18px',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.9), 0 5px 0 #d1d5db, 0 8px 16px rgba(0,0,0,0.1)',
+        padding: '0 10px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 5px 0 #d1d5db, 0 8px 16px rgba(0,0,0,0.1)',
         transition: 'all 0.12s ease',
         letterSpacing: '0.3px',
         outline: 'none',
       }
     : {
         width: '100%',
-        height: '64px',
-        background:
-          'linear-gradient(180deg, #3b4560 0%, #252b3d 50%, #1a1f2e 100%)',
-        backgroundColor: '#252b3d',
+        height: '100%',
+        // 🔥 Same color theme jaisa Start/Stop ka hai
+        background: 'linear-gradient(180deg, #3b4560 0%, #252b3d 50%, #1a1f2e 100%)',
         color: '#fff',
         border: '1px solid rgba(168, 85, 247, 0.35)',
         borderRadius: '12px',
-        fontSize: '18px',
+        fontSize: '15px',
         fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '10px',
+        gap: '6px',
         cursor: 'pointer',
         fontFamily: 'inherit',
-        padding: '0 18px',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.15), 0 5px 0 #0a0e1a, 0 8px 18px rgba(0,0,0,0.5)',
+        padding: '0 10px',
+        // 🔥 3D shadow
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 5px 0 #0a0e1a, 0 8px 18px rgba(0,0,0,0.5)',
         transition: 'all 0.12s ease',
         letterSpacing: '0.3px',
         outline: 'none',
@@ -98,9 +95,7 @@ export default function CountrySelector({ selected, onSelect }) {
     transform: 'translateX(-50%)',
     width: '320px',
     background: isLight ? '#ffffff' : '#131823',
-    border: `1px solid ${
-      isLight ? 'rgba(168, 85, 247, 0.3)' : 'rgba(168, 85, 247, 0.3)'
-    }`,
+    border: `1px solid ${isLight ? 'rgba(168, 85, 247, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
     borderRadius: '16px',
     boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
     overflow: 'hidden',
@@ -113,9 +108,7 @@ export default function CountrySelector({ selected, onSelect }) {
     alignItems: 'center',
     gap: '12px',
     padding: '10px 14px',
-    background: isSelected
-      ? 'rgba(168, 85, 247, 0.2)'
-      : 'transparent',
+    background: isSelected ? 'rgba(168, 85, 247, 0.2)' : 'transparent',
     border: 'none',
     color: isLight ? '#1f2937' : '#fff',
     textAlign: 'left',
@@ -128,11 +121,7 @@ export default function CountrySelector({ selected, onSelect }) {
     <div
       ref={dropdownRef}
       className="country-selector-wrapper"
-      style={{
-        position: 'relative',
-        flex: '0 0 180px',
-        width: '180px',
-      }}
+      style={{ position: 'relative', flex: 1, width: '100%' }}
     >
       <button onClick={() => setOpen(!open)} style={buttonStyle}>
         <span>{t('control.country')}</span>
@@ -145,16 +134,7 @@ export default function CountrySelector({ selected, onSelect }) {
 
       {open && (
         <div style={dropdownStyle}>
-          <div
-            style={{
-              padding: '10px',
-              borderBottom: `1px solid ${
-                isLight
-                  ? 'rgba(168, 85, 247, 0.15)'
-                  : 'rgba(168, 85, 247, 0.15)'
-              }`,
-            }}
-          >
+          <div style={{ padding: '10px', borderBottom: `1px solid ${isLight ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.15)'}` }}>
             <input
               type="text"
               value={search}
@@ -164,9 +144,7 @@ export default function CountrySelector({ selected, onSelect }) {
               style={{
                 width: '100%',
                 background: isLight ? '#f3f4f6' : 'rgba(10, 14, 26, 0.6)',
-                border: `1px solid ${
-                  isLight ? '#e5e7eb' : 'rgba(255,255,255,0.08)'
-                }`,
+                border: `1px solid ${isLight ? '#e5e7eb' : 'rgba(255,255,255,0.08)'}`,
                 borderRadius: '10px',
                 padding: '10px 14px',
                 fontSize: '13px',
@@ -178,38 +156,16 @@ export default function CountrySelector({ selected, onSelect }) {
           </div>
 
           <button
-            onClick={() => {
-              onSelect('ANY');
-              setOpen(false);
-              setSearch('');
-            }}
-            style={{
-              ...itemStyle(selected === 'ANY'),
-              borderBottom: `1px solid rgba(168, 85, 247, 0.15)`,
-            }}
+            onClick={() => { onSelect('ANY'); setOpen(false); setSearch(''); }}
+            style={{ ...itemStyle(selected === 'ANY'), borderBottom: `1px solid rgba(168, 85, 247, 0.15)` }}
           >
-            <span
-              style={{
-                fontSize: '18px',
-                width: '22px',
-                textAlign: 'center',
-              }}
-            >
-              🌍
-            </span>
+            <span style={{ fontSize: '18px', width: '22px', textAlign: 'center' }}>🌍</span>
             <span style={{ flex: 1 }}>{t('country.any')}</span>
           </button>
 
           <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
             {filtered.length === 0 && (
-              <p
-                style={{
-                  padding: '16px',
-                  textAlign: 'center',
-                  color: isLight ? '#6b7280' : '#6b7280',
-                  fontSize: '12px',
-                }}
-              >
+              <p style={{ padding: '16px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>
                 {t('country.none')}
               </p>
             )}
@@ -219,59 +175,20 @@ export default function CountrySelector({ selected, onSelect }) {
               return (
                 <button
                   key={c.code}
-                  onClick={() => {
-                    onSelect(c.code);
-                    setOpen(false);
-                    setSearch('');
-                  }}
+                  onClick={() => { onSelect(c.code); setOpen(false); setSearch(''); }}
                   style={itemStyle(isSelected)}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      'rgba(168, 85, 247, 0.1)')
-                  }
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = isSelected
-                      ? 'rgba(168, 85, 247, 0.2)'
-                      : 'transparent';
-                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)')}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? 'rgba(168, 85, 247, 0.2)' : 'transparent'; }}
                 >
                   {CountryFlag ? (
-                    <CountryFlag
-                      style={{
-                        width: '22px',
-                        height: '15px',
-                        borderRadius: '2px',
-                        flexShrink: 0,
-                      }}
-                    />
+                    <CountryFlag style={{ width: '22px', height: '15px', borderRadius: '2px', flexShrink: 0 }} />
                   ) : (
-                    <div
-                      style={{
-                        width: '22px',
-                        height: '15px',
-                        background: '#374151',
-                        borderRadius: '2px',
-                      }}
-                    />
+                    <div style={{ width: '22px', height: '15px', background: '#374151', borderRadius: '2px' }} />
                   )}
-                  <span
-                    style={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {c.name}
                   </span>
-                  <span
-                    style={{
-                      color: isLight ? '#6b7280' : '#6b7280',
-                      fontSize: '11px',
-                    }}
-                  >
-                    +{c.dialCode}
-                  </span>
+                  <span style={{ color: '#6b7280', fontSize: '11px' }}>+{c.dialCode}</span>
                 </button>
               );
             })}
