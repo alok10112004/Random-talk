@@ -6,9 +6,7 @@ export function useWebRTC(socket) {
   const remoteStreamRef = useRef(null);
   const roomIdRef = useRef(null);
   
-  // 🔥 TURN Credentials ko memory me save karne ke liye
   const iceServersRef = useRef([{ urls: 'stun:stun.l.google.com:19302' }]);
-  // 🔥 Promise banaya taaki PeerConnection TURN aane ka wait kare
   const turnPromiseRef = useRef(null); 
 
   useEffect(() => {
@@ -20,10 +18,7 @@ export function useWebRTC(socket) {
         const res = await fetch(`${baseUrl}/api/turn/credentials`);
         
         if (res.ok && isMounted) {
-          const data = await res.json();
-          // 🔥 FIX: Cloudflare object bhejta hai, array nahi
-          const servers = data.iceServers ? data.iceServers : data; 
-          
+          const servers = await res.json();
           if (servers && servers.length > 0) {
             iceServersRef.current = servers;
             console.log('✅ TURN Credentials pre-fetched:', servers);
@@ -34,7 +29,6 @@ export function useWebRTC(socket) {
       }
     }
     
-    // Promise save karo taaki createPeer iska wait kar sake
     turnPromiseRef.current = fetchTurnCreds();
     return () => { isMounted = false; };
   }, []);
@@ -59,10 +53,8 @@ export function useWebRTC(socket) {
     roomIdRef.current = null;
   }, []);
 
-  // 🔥 createPeer ko async banaya taaki TURN fetch hone ka wait kare
   const createPeer = useCallback(
     async (onRemoteStream) => {
-      // TURN credentials aane tak wait karo
       if (turnPromiseRef.current) {
         await turnPromiseRef.current;
       }

@@ -8,12 +8,6 @@ router.get('/credentials', async (req, res) => {
     const keyId = process.env.TURN_KEY_ID;
     const token = process.env.TURN_KEY_API_TOKEN;
 
-    // Check karo ki variables khali toh nahi hain
-    if (!keyId || !token) {
-      console.error('❌ Missing TURN Keys in Environment Variables');
-      return res.status(500).json({ error: 'Server config missing' });
-    }
-
     const response = await fetch(
       `https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`,
       {
@@ -22,26 +16,22 @@ router.get('/credentials', async (req, res) => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ttl: 86400 }),
+        body: JSON.stringify({ ttl: 86400 }), 
       }
     );
 
-    // Agar Cloudflare ne error diya, toh log karo
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Cloudflare Error:', response.status, errorText);
-      return res.status(response.status).json({ error: 'Cloudflare API failed', details: errorText });
+      console.error('❌ Cloudflare Error:', response.status);
+      return res.status(response.status).json({ error: 'Cloudflare failed' });
     }
 
     const data = await response.json();
-    console.log('✅ TURN Data successfully fetched');
-    
-    // Data ko frontend ko bhejo
+    // 🔥 Cloudflare object bhejta hai, use direct array banao
     res.json(data.iceServers); 
 
   } catch (error) {
     console.error('❌ TURN Error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch TURN credentials', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch TURN credentials' });
   }
 });
 
