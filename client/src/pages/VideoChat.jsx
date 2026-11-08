@@ -182,32 +182,37 @@ function VideoChat() {
     navigate("/login");
   };
 
-  // 🔥 FIX: Check karo ki hum call mein hain ya nahi
   const isInCall = status === "connected" || status === "searching";
 
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black text-white overflow-hidden flex flex-col">
       
-      {/* 🔥 TopBar Header - Sirf idle state mein dikhega */}
-      {!isInCall && (
-        <div className="flex-shrink-0 flex justify-between items-center p-4 bg-black z-20">
-          <h1 className="text-xl font-bold text-orange-500">📺 Iconic TV</h1>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">
-              🟢 {onlineCount.toLocaleString()} online
-            </span>
+      {/* 🔥 TopBar Header - Ab call ke dauran bhi dikhega (overlay) */}
+      <div 
+        className="absolute top-0 left-0 w-full flex justify-between items-center p-3 z-50"
+        style={{ 
+          background: isInCall ? 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' : '#131823' 
+        }}
+      >
+        <h1 className="text-xl font-bold text-orange-500">📺 Iconic TV</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-300 font-medium">
+            🟢 {onlineCount.toLocaleString()} online
+          </span>
+          {!isInCall && (
             <button
               onClick={handleLogout}
               className="bg-red-600 px-2 py-1 rounded text-xs"
             >
               Logout
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* 🔥 Main Area: 50-50 Split on mobile */}
-      <div className="flex-1 flex flex-col min-h-0 relative">
+      {/* 🔥 Main Area: 50-50 Split */}
+      {/* pt-14 diya hai taaki video TopBar ke neeche se shuru ho */}
+      <div className="flex-1 flex flex-col min-h-0 relative pt-14">
         
         {/* Stranger Video (Top) */}
         <div className="flex-1 relative bg-gray-900 border-b border-gray-700">
