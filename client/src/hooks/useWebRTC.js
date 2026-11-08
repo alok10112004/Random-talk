@@ -7,60 +7,57 @@ export function useWebRTC(socket) {
   const roomIdRef = useRef(null);
   
   const iceServersRef = useRef([{ urls: 'stun:stun.l.google.com:19302' }]);
-  const turnPromiseRef = useRef(null); 
 
   useEffect(() => {
-    let isMounted = true;
-    
     async function fetchTurnCreds() {
       try {
         const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
         const res = await fetch(`${baseUrl}/api/turn/credentials`);
-        
-        if (res.ok && isMounted) {
-          const servers = await res.json();
-          if (servers && servers.length > 0) {
-            iceServersRef.current = servers;
-            console.log('✅ TURN Credentials pre-fetched:', servers);
+        if (res.ok) {
+          const text = await res.text();
+          try {
+            const servers = JSON.parse(text);
+            if (servers && servers.length > 0) {
+              iceServersRef.current = servers;
+              console.log('✅ TURN Credentials loaded');
+            }
+          } catch (e) {
+            console.warn('❌ TURN JSON parse error:', text.substring(0, 50));
           }
         }
       } catch (e) {
-        console.warn('❌ Pre-fetch TURN failed, using default STUN', e);
+        console.warn('❌ TURN fetch failed');
       }
     }
-    
-    turnPromiseRef.current = fetchTurnCreds();
-    return () => { isMounted = false; };
+    fetchTurnCreds();
   }, []);
 
   const cleanup = useCallback(() => {
     if (pcRef.current) {
-      try {
-        pcRef.current.ontrack = null;
-        pcRef.current.onicecandidate = null;
-        pcRef.current.onconnectionstatechange = null;
-        pcRef.current.close();
-      } catch (e) {}
+      try { pcRef.current.close(); } catch (e) {}
       pcRef.current = null;
     }
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => {
-        try { t.stop(); } catch (e) {}
-      });
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
     }
     remoteStreamRef.current = null;
     roomIdRef.current = null;
   }, []);
 
+  // 🔥 async hata diya hai yahan se
   const createPeer = useCallback(
-    async (onRemoteStream) => {
-      if (turnPromiseRef.current) {
-        await turnPromiseRef.current;
-      }
+    (onRemoteStream) => {
+      if (pcRef.current) pcRef.current.close();
 
       const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       pcRef.current = pc;
+
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, localStreamRef.current);
+        });
+      }
 
       pc.onicecandidate = (e) => {
         if (e.candidate && roomIdRef.current) {
@@ -80,21 +77,6 @@ export function useWebRTC(socket) {
         console.log('📡 PC state:', pc.connectionState);
       };
 
-      setTimeout(() => {
-        try {
-          const senders = pc.getSenders();
-          senders.forEach((sender) => {
-            if (sender.track && sender.track.kind === 'video') {
-              const params = sender.getParameters();
-              if (!params.encodings) params.encodings = [{}];
-              params.encodings[0].maxBitrate = 1500000;
-              params.encodings[0].maxFramerate = 30;
-              sender.setParameters(params);
-            }
-          });
-        } catch (err) {}
-      }, 1000);
-
       return pc;
     },
     [socket]
@@ -102,33 +84,25 @@ export function useWebRTC(socket) {
 
   const startLocalStream = useCallback(async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Camera not supported. HTTPS ya localhost chahiye.');
+      throw new Error('Camera not supported.');
     }
 
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    const videoConstraints = isMobileDevice 
-      ? { width: { ideal: 640 }, height: { ideal: 480 }, aspectRatio: { ideal: 1.333333 }, facingMode: 'user' }
-      : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user', frameRate: { ideal: 30, max: 60 } };
+    const videoConstraints = isMobile 
+      ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+      : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' };
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 },
+        audio: { echoCancellation: true, noiseSuppression: true },
       });
-
       localStreamRef.current = stream;
       return stream;
     } catch (err) {
-      console.error('❌ getUserMedia error:', err.name, err.message);
-      let msg = 'Camera access failed. ';
-      switch (err.name) {
-        case 'NotAllowedError': msg += 'Please allow camera & microphone.'; break;
-        case 'NotFoundError': msg += 'No camera or microphone found.'; break;
-        case 'NotReadableError': msg += 'Camera is already in use by another app.'; break;
-        default: msg += err.message || 'Unknown error.';
-      }
-      throw new Error(msg);
+      console.error('❌ getUserMedia error:', err.name);
+      throw new Error(err.name);
     }
   }, []);
 
