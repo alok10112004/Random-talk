@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import ReportModal from "../components/ReportModal";
+import TopBar from "../components/TopBar"; // 🔥 TopBar Import kiya
 
 const socket = io(import.meta.env.VITE_SERVER_URL || "http://localhost:5000");
 
@@ -16,9 +17,7 @@ function VideoChat() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("idle");
   const [gender, setGender] = useState("male");
-  
-  // 🔥 Online count state (agar socket se aata hai to update hoga, warna dummy)
-  const [onlineCount, setOnlineCount] = useState(364488); 
+  const [onlineCount, setOnlineCount] = useState(0); 
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   const [iceServers, setIceServers] = useState([{ urls: "stun:stun.l.google.com:19302" }]);
@@ -32,7 +31,7 @@ function VideoChat() {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
-  // 🔥 Socket se online count listen karo (Agar backend bhej raha hai)
+  // 🔥 Online count Socket se listen karo
   useEffect(() => {
     socket.on("online-count", (count) => {
       setOnlineCount(count);
@@ -49,6 +48,7 @@ function VideoChat() {
           const servers = await res.json();
           if (servers && servers.length > 0) {
             setIceServers(servers);
+            console.log('✅ TURN Credentials loaded');
           }
         }
       } catch (e) {
@@ -77,7 +77,9 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      const peer = new RTCPeerConnection({ iceServers });
+      const peer = new RTCPeerConnection({
+        iceServers: iceServers,
+      });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
@@ -194,35 +196,21 @@ function VideoChat() {
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black text-white overflow-hidden flex flex-col">
       
-      {/* 🔥 TOPBAR (Fixed) - Ab hamesha rahega aur online count dikhayega */}
-      <div 
-        className="absolute top-0 left-0 w-full flex justify-between items-center p-3 z-50"
-        style={{ 
-          background: isInCall ? 'linear-gradient(to bottom, rgba(0,0,0,0.9), transparent)' : 'transparent' 
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
-          
-          {/* 🔥 ONLINE COUNT PILL */}
-          <div className="flex items-center gap-1.5 bg-black/50 px-3 py-1.5 rounded-full border border-green-500/40 backdrop-blur-sm">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="text-xs font-bold text-green-400">
-              {onlineCount.toLocaleString()} online
-            </span>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
-          <button className="bg-white/10 p-2 rounded-lg hover:bg-white/20">💬</button>
-          <button className="bg-white/10 p-2 rounded-lg hover:bg-white/20">?</button>
-        </div>
+      {/* 🔥 TopBar - Hamesha upar rahega (absolute z-50) */}
+      <div className="absolute top-0 left-0 w-full z-50">
+        <TopBar 
+          status={status === "searching" ? "waiting" : status} 
+          onlineCount={onlineCount} 
+          onToggleChat={() => {}} // Chat toggle logic agar chahiye to yahan add karo
+          onHelp={() => {}} 
+        />
       </div>
 
-      {/* 🔥 MAIN VIDEO AREA (50-50) */}
+      {/* 🔥 Main Area: 50-50 Split */}
+      {/* pt-16 diya hai taaki video TopBar ke neeche se shuru ho */}
       <div className="flex-1 flex flex-col min-h-0 relative pt-16">
         
-        {/* Stranger Video (Top Half) */}
+        {/* Stranger Video (Top) */}
         <div className="flex-1 relative bg-gray-900 border-b border-gray-700">
           <video
             ref={remoteVideoRef}
@@ -253,7 +241,7 @@ function VideoChat() {
           )}
         </div>
 
-        {/* Apna Video (Bottom Half) */}
+        {/* Apna Video (Bottom) */}
         <div className="flex-1 relative bg-gray-900">
           <video
             ref={localVideoRef}
@@ -277,7 +265,7 @@ function VideoChat() {
         </div>
       </div>
 
-      {/* 🔥 BOTTOM CONTROL BAR (Sirf idle state mein) */}
+      {/* 🔥 Bottom Control Bar (Sirf idle state mein) */}
       {!isInCall && (
         <div className="flex-shrink-0 p-4 bg-black z-20">
           <div className="grid grid-cols-3 gap-2 mb-2">

@@ -33,10 +33,10 @@ export default function TopBar({
           }}
         />
 
-        {/* Online count */}
+        {/* 🔥 FIX: Yahan se 'hidden md:flex' hatakar 'flex' kar diya hai taaki mobile par bhi dikhe */}
         {onlineCount > 0 && (
           <div
-            className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full"
+            className="flex items-center gap-2 px-3 py-1 rounded-full"
             style={{
               background: 'rgba(16, 185, 129, 0.2)',
               border: '1px solid rgba(16, 185, 129, 0.4)',
