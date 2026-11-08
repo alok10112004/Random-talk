@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
-import ReportModal from "../components/ReportModal"; // ✅ Naya Import
+import ReportModal from "../components/ReportModal";
 
-const socket = io("http://localhost:5000");
+// 🔥 FIX: Localhost hata kar Vercel ka env variable use karo
+const socket = io(import.meta.env.VITE_SERVER_URL || "http://localhost:5000");
 
 function VideoChat() {
   const { user, logout } = useAuth();
@@ -17,9 +18,10 @@ function VideoChat() {
   const [status, setStatus] = useState("idle");
   const [gender, setGender] = useState("male");
   const [onlineCount] = useState(364488);
-  
-  // ✅ Naya State Report Modal ke liye
   const [isReportOpen, setIsReportOpen] = useState(false);
+
+  // 🔥 FIX: TURN Credentials ke liye state
+  const [iceServers, setIceServers] = useState([{ urls: "stun:stun.l.google.com:19302" }]);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -29,6 +31,26 @@ function VideoChat() {
   useEffect(() => {
     if (!user) navigate("/login");
   }, [user, navigate]);
+
+  // 🔥 FIX: TURN Credentials fetch karo page load par
+  useEffect(() => {
+    async function fetchTurnCreds() {
+      try {
+        const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+        const res = await fetch(`${baseUrl}/api/turn/credentials`);
+        if (res.ok) {
+          const servers = await res.json();
+          if (servers && servers.length > 0) {
+            setIceServers(servers);
+            console.log('✅ TURN Credentials loaded in VideoChat');
+          }
+        }
+      } catch (e) {
+        console.warn('❌ TURN fetch failed in VideoChat');
+      }
+    }
+    fetchTurnCreds();
+  }, []);
 
   useEffect(() => {
     navigator.mediaDevices
@@ -51,11 +73,9 @@ function VideoChat() {
         setPartnerCountry(partnerCountry || "Unknown");
         setStatus("connected");
 
+        // 🔥 FIX: Yahan TURN server state use ki hai
         const peer = new RTCPeerConnection({
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-          ],
+          iceServers: iceServers, 
         });
         peerRef.current = peer;
 
@@ -132,7 +152,7 @@ function VideoChat() {
       socket.off("new-message");
       socket.off("partner-left");
     };
-  }, []);
+  }, [iceServers]); // 🔥 FIX: iceServers dependency me daala
 
   const startChat = () => {
     setStatus("searching");
@@ -175,7 +195,6 @@ function VideoChat() {
   return (
     <div className="min-h-screen bg-black text-white p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-orange-500">📺 Iconic TV</h1>
           <div className="flex items-center gap-4">
@@ -194,13 +213,10 @@ function VideoChat() {
           </div>
         </div>
 
-        {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Video Area */}
           <div className="lg:col-span-2 space-y-3">
             <div className="relative bg-gray-900 rounded-lg overflow-hidden border-2 border-orange-500/30">
               
-              {/* ✅ Apna Video + STOP Button (jab call connect ya searching ho) */}
               <div className="relative w-full aspect-video">
                 <video
                   ref={localVideoRef}
@@ -223,7 +239,6 @@ function VideoChat() {
                 )}
               </div>
 
-              {/* Partner video + FLAG Button */}
               {status === "connected" && (
                 <div className="absolute bottom-2 right-2 w-40 h-28 bg-black rounded-lg overflow-hidden border-2 border-orange-500 z-10">
                   <video
@@ -237,7 +252,6 @@ function VideoChat() {
                       🌍 {partnerCountry}
                     </div>
                   )}
-                  {/* ✅ Stranger Pr Transparent Flag Button */}
                   <button
                     onClick={() => setIsReportOpen(true)}
                     className="absolute top-1 right-1 p-1.5 bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white rounded transition-all z-20"
@@ -260,7 +274,6 @@ function VideoChat() {
               )}
             </div>
 
-            {/* Controls */}
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={startChat}
@@ -296,7 +309,6 @@ function VideoChat() {
             </p>
           </div>
 
-          {/* Chat Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-gray-900 rounded-lg border border-orange-500/30 h-full flex flex-col">
               <div className="p-3 border-b border-orange-500/30 flex justify-between items-center">
@@ -356,12 +368,11 @@ function VideoChat() {
         </div>
       </div>
       
-      {/* ✅ Report Modal (Agar tera ReportModal props leta hai toh tu adjust kar lena) */}
       <ReportModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
         partnerId={partnerId}
-        onReportSubmitted={stopChat} // Report karne ke baad call cut ho jaye
+        onReportSubmitted={stopChat}
       />
     </div>
   );

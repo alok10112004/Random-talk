@@ -14,15 +14,10 @@ export function useWebRTC(socket) {
         const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
         const res = await fetch(`${baseUrl}/api/turn/credentials`);
         if (res.ok) {
-          const text = await res.text();
-          try {
-            const servers = JSON.parse(text);
-            if (servers && servers.length > 0) {
-              iceServersRef.current = servers;
-              console.log('✅ TURN Credentials loaded');
-            }
-          } catch (e) {
-            console.warn('❌ TURN JSON parse error:', text.substring(0, 50));
+          const servers = await res.json();
+          if (servers && servers.length > 0) {
+            iceServersRef.current = servers;
+            console.log('✅ TURN Credentials loaded');
           }
         }
       } catch (e) {
@@ -45,7 +40,6 @@ export function useWebRTC(socket) {
     roomIdRef.current = null;
   }, []);
 
-  // 🔥 async hata diya hai yahan se
   const createPeer = useCallback(
     (onRemoteStream) => {
       if (pcRef.current) pcRef.current.close();
@@ -53,6 +47,7 @@ export function useWebRTC(socket) {
       const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       pcRef.current = pc;
 
+      // Agar camera pehle se on hai toh track add karo
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
           pc.addTrack(track, localStreamRef.current);
@@ -88,7 +83,6 @@ export function useWebRTC(socket) {
     }
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
     const videoConstraints = isMobile 
       ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
       : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' };
