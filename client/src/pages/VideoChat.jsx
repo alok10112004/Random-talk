@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import ReportModal from "../components/ReportModal";
-import TopBar from "../components/TopBar"; // 🔥 TopBar Import kiya
+import TopBar from "../components/TopBar";
 
-const socket = io(import.meta.env.VITE_SERVER_URL || "http://localhost:5000");
+// 🔥 FIX: Seedha Railway server ka URL daala hai
+const socket = io("https://random-talk-production.up.railway.app");
 
 function VideoChat() {
   const { user, logout } = useAuth();
@@ -31,19 +32,11 @@ function VideoChat() {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
-  // 🔥 Online count Socket se listen karo
-  useEffect(() => {
-    socket.on("online-count", (count) => {
-      setOnlineCount(count);
-    });
-    return () => socket.off("online-count");
-  }, []);
-
+  // 🔥 FIX: TURN Fetch Seedha Railway se
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
-        const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
-        const res = await fetch(`${baseUrl}/api/turn/credentials`);
+        const res = await fetch(`https://random-talk-production.up.railway.app/api/turn/credentials`);
         if (res.ok) {
           const servers = await res.json();
           if (servers && servers.length > 0) {
@@ -83,8 +76,14 @@ function VideoChat() {
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
+      
+      // 🔥 FIX: Track add karne se pehle check lagaya hai
+      const senders = peer.getSenders();
       localStream.getTracks().forEach((track) => {
-        peer.addTrack(track, localStream);
+        const alreadyExists = senders.some(sender => sender.track === track);
+        if (!alreadyExists) {
+          peer.addTrack(track, localStream);
+        }
       });
 
       peer.ontrack = (event) => {
@@ -196,21 +195,17 @@ function VideoChat() {
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black text-white overflow-hidden flex flex-col">
       
-      {/* 🔥 TopBar - Hamesha upar rahega (absolute z-50) */}
       <div className="absolute top-0 left-0 w-full z-50">
         <TopBar 
           status={status === "searching" ? "waiting" : status} 
           onlineCount={onlineCount} 
-          onToggleChat={() => {}} // Chat toggle logic agar chahiye to yahan add karo
+          onToggleChat={() => {}}
           onHelp={() => {}} 
         />
       </div>
 
-      {/* 🔥 Main Area: 50-50 Split */}
-      {/* pt-16 diya hai taaki video TopBar ke neeche se shuru ho */}
       <div className="flex-1 flex flex-col min-h-0 relative pt-16">
         
-        {/* Stranger Video (Top) */}
         <div className="flex-1 relative bg-gray-900 border-b border-gray-700">
           <video
             ref={remoteVideoRef}
@@ -241,7 +236,6 @@ function VideoChat() {
           )}
         </div>
 
-        {/* Apna Video (Bottom) */}
         <div className="flex-1 relative bg-gray-900">
           <video
             ref={localVideoRef}
@@ -265,7 +259,6 @@ function VideoChat() {
         </div>
       </div>
 
-      {/* 🔥 Bottom Control Bar (Sirf idle state mein) */}
       {!isInCall && (
         <div className="flex-shrink-0 p-4 bg-black z-20">
           <div className="grid grid-cols-3 gap-2 mb-2">
