@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import fetch from 'node-fetch'; // 🔥 ADDED
+import fetch from 'node-fetch';
 import videoChat from './socket/videoChat.js';
 import authRoutes from './routes/auth.js';
 import countryRoutes from './routes/countries.js';
@@ -15,24 +15,13 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'http://localhost:5173',
-  'http://localhost:3000'
-].filter(Boolean);
+// 🔥 CORS FIX: Sabhi origins ko allow karo (Vercel, Localhost, sab)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // ---- Routes ----
@@ -42,7 +31,7 @@ app.use('/api/turn', turnRoutes);
 
 app.get('/', (req, res) => res.send('Random Talk server is running 🚀'));
 
-// 🔥 ADDED TEST ROUTE
+// 🔥 TEST ROUTE
 app.get('/test-turn', async (req, res) => {
   try {
     const keyId = process.env.TURN_KEY_ID;
@@ -61,18 +50,12 @@ app.get('/test-turn', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// 🔥 END TEST ROUTE
 
 // ---- Socket.io ----
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: '*',
+    methods: ['GET', 'POST'],
     credentials: true,
   },
 });
