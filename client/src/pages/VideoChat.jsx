@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import ReportModal from "../components/ReportModal";
 import TopBar from "../components/TopBar";
 
+// 🔥 Direct Railway Server
 const socket = io("https://random-talk-production.up.railway.app");
 
 function VideoChat() {
@@ -20,7 +21,6 @@ function VideoChat() {
   const [onlineCount, setOnlineCount] = useState(0); 
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  // 🔥 Default STUN
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
 
   const localVideoRef = useRef(null);
@@ -32,7 +32,7 @@ function VideoChat() {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
-  // 🔥 TURN fetch karo page load par
+  // 🔥 TURN Fetch
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
@@ -51,7 +51,13 @@ function VideoChat() {
     fetchTurnCreds();
   }, []);
 
+  // 🔥 Socket Online Count & WebRTC
   useEffect(() => {
+    // 🔥 ONLINE COUNT LISTENER
+    socket.on("online-count", (count) => {
+      setOnlineCount(count);
+    });
+
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
       .then((stream) => {
@@ -70,7 +76,6 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      // 🔥 peer banao aur TURN servers use karo
       const peer = new RTCPeerConnection({
         iceServers: iceServersRef.current, 
       });
@@ -151,6 +156,7 @@ function VideoChat() {
     socket.on("partner-left", onPartnerLeft);
 
     return () => {
+      socket.off("online-count"); // Cleanup
       socket.off("matched", onMatched);
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);

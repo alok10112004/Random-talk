@@ -50,6 +50,7 @@ function pairSockets(io, socketA, socketB) {
 export default function videoChat(io, socket) {
   console.log('videoChat init for', socket.id);
 
+  // 🔥 Online Count Emit
   onlineCount++;
   io.emit('online-count', onlineCount);
 
@@ -114,7 +115,6 @@ export default function videoChat(io, socket) {
       }
     }
 
-    // 🔥 FIX: lastPartner clear karo
     socket.data.lastPartner = null;
 
     const myCountry = socket.data.country;
@@ -134,11 +134,9 @@ export default function videoChat(io, socket) {
     waiting = waiting.filter((w) => w.socket.id !== socket.id);
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
-      // 🔥 FIX: Yahan bhi partner-left bhejo frontend ko
       socket.to(roomId).emit('partner-left'); 
       socket.leave(roomId);
     });
-    // 🔥 FIX: Stop par lastPartner clear karo
     socket.data.lastPartner = null;
   });
 
