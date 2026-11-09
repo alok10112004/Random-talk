@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import ReportModal from "../components/ReportModal";
 import TopBar from "../components/TopBar";
 
-// 🔥 FIX: Seedha Railway server ka URL daala hai
+// 🔥 Direct Railway Server
 const socket = io("https://random-talk-production.up.railway.app");
 
 function VideoChat() {
@@ -21,7 +21,8 @@ function VideoChat() {
   const [onlineCount, setOnlineCount] = useState(0); 
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  const [iceServers, setIceServers] = useState([{ urls: "stun:stun.l.google.com:19302" }]);
+  // 🔥 iceServers ko useRef me rakha taaki update hone par useEffect na chale
+  const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -32,25 +33,30 @@ function VideoChat() {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
-  // 🔥 FIX: TURN Fetch Seedha Railway se
+  // 🔥 TURN Fetch with CORS mode
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
-        const res = await fetch(`https://random-talk-production.up.railway.app/api/turn/credentials`);
+        const res = await fetch(`https://random-talk-production.up.railway.app/api/turn/credentials`, {
+          method: 'GET',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' }
+        });
         if (res.ok) {
           const servers = await res.json();
           if (servers && servers.length > 0) {
-            setIceServers(servers);
+            iceServersRef.current = servers; // Ref me save kiya
             console.log('✅ TURN Credentials loaded');
           }
         }
       } catch (e) {
-        console.warn('❌ TURN fetch failed');
+        console.warn('❌ TURN fetch failed', e);
       }
     }
     fetchTurnCreds();
   }, []);
 
+  // 🔥 socket.on hamesha ek hi baar chalega ab
   useEffect(() => {
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
@@ -64,27 +70,30 @@ function VideoChat() {
         alert("Camera/Mic permission denied.");
       });
 
-    socket.on("matched", ({ roomId, partnerId, partnerCountry, isInitiator }) => {
+    const onMatched = ({ roomId, partnerId, partnerCountry, isInitiator }) => {
       roomIdRef.current = roomId;
       setPartnerId(partnerId);
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
       const peer = new RTCPeerConnection({
-        iceServers: iceServers,
+        iceServers: iceServersRef.current, // Latest ref use kiya
       });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
       
-      // 🔥 FIX: Track add karne se pehle check lagaya hai
-      const senders = peer.getSenders();
-      localStream.getTracks().forEach((track) => {
-        const alreadyExists = senders.some(sender => sender.track === track);
-        if (!alreadyExists) {
-          peer.addTrack(track, localStream);
-        }
-      });
+      // 🔥 Strict check for track
+      if (localStream) {
+        localStream.getTracks().forEach((track) => {
+          // Har track add karne se pehle sender check
+          const senders = peer.getSenders();
+          const alreadyExists = senders.find(sender => sender.track && sender.track.id === track.id);
+          if (!alreadyExists) {
+            peer.addTrack(track, localStream);
+          }
+        });
+      }
 
       peer.ontrack = (event) => {
         if (remoteVideoRef.current) {
@@ -104,34 +113,34 @@ function VideoChat() {
           socket.emit("offer", { roomId, offer });
         });
       }
-    });
+    };
 
-    socket.on("offer", async ({ offer }) => {
+    const onOffer = async ({ offer }) => {
       const peer = peerRef.current;
       if (!peer) return;
       await peer.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       socket.emit("answer", { roomId: roomIdRef.current, answer });
-    });
+    };
 
-    socket.on("answer", async ({ answer }) => {
+    const onAnswer = async ({ answer }) => {
       const peer = peerRef.current;
       if (!peer) return;
       await peer.setRemoteDescription(new RTCSessionDescription(answer));
-    });
+    };
 
-    socket.on("ice-candidate", async ({ candidate }) => {
+    const onIce = async ({ candidate }) => {
       const peer = peerRef.current;
       if (!peer) return;
       await peer.addIceCandidate(new RTCIceCandidate(candidate));
-    });
+    };
 
-    socket.on("new-message", ({ message, senderId }) => {
+    const onMessage = ({ message, senderId }) => {
       setMessages((prev) => [...prev, { message, senderId }]);
-    });
+    };
 
-    socket.on("partner-left", () => {
+    const onPartnerLeft = () => {
       setStatus("idle");
       setPartnerId(null);
       setPartnerCountry("");
@@ -140,17 +149,24 @@ function VideoChat() {
         peerRef.current.close();
         peerRef.current = null;
       }
-    });
+    };
+
+    socket.on("matched", onMatched);
+    socket.on("offer", onOffer);
+    socket.on("answer", onAnswer);
+    socket.on("ice-candidate", onIce);
+    socket.on("new-message", onMessage);
+    socket.on("partner-left", onPartnerLeft);
 
     return () => {
-      socket.off("matched");
-      socket.off("offer");
-      socket.off("answer");
-      socket.off("ice-candidate");
-      socket.off("new-message");
-      socket.off("partner-left");
+      socket.off("matched", onMatched);
+      socket.off("offer", onOffer);
+      socket.off("answer", onAnswer);
+      socket.off("ice-candidate", onIce);
+      socket.off("new-message", onMessage);
+      socket.off("partner-left", onPartnerLeft);
     };
-  }, [iceServers]);
+  }, []); // 🔥 Empty array taaki sirf ek baar chale
 
   const startChat = () => {
     setStatus("searching");
