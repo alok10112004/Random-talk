@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext";
 import ReportModal from "../components/ReportModal";
 import TopBar from "../components/TopBar";
 
-// 🔥 Direct Railway Server
 const socket = io("https://random-talk-production.up.railway.app");
 
 function VideoChat() {
@@ -21,6 +20,7 @@ function VideoChat() {
   const [onlineCount, setOnlineCount] = useState(0); 
   const [isReportOpen, setIsReportOpen] = useState(false);
 
+  // 🔥 Default STUN
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
 
   const localVideoRef = useRef(null);
@@ -32,15 +32,11 @@ function VideoChat() {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
-  // 🔥 TURN Fetch with CORS mode
+  // 🔥 TURN fetch karo page load par
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
-        const res = await fetch(`https://random-talk-production.up.railway.app/api/turn/credentials`, {
-          method: 'GET',
-          mode: 'cors',
-          headers: { 'Content-Type': 'application/json' }
-        });
+        const res = await fetch(`https://random-talk-production.up.railway.app/api/turn/credentials`);
         if (res.ok) {
           const servers = await res.json();
           if (servers && servers.length > 0) {
@@ -49,13 +45,12 @@ function VideoChat() {
           }
         }
       } catch (e) {
-        console.warn('❌ TURN fetch failed', e);
+        console.warn('❌ TURN fetch failed');
       }
     }
     fetchTurnCreds();
   }, []);
 
-  // 🔥 socket.on hamesha ek hi baar chalega
   useEffect(() => {
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
@@ -75,14 +70,14 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
+      // 🔥 peer banao aur TURN servers use karo
       const peer = new RTCPeerConnection({
-        iceServers: iceServersRef.current,
+        iceServers: iceServersRef.current, 
       });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
       
-      // 🔥 FIX 1: Strict track check (Yeh line error khatam karegi)
       if (localStream) {
         localStream.getTracks().forEach((track) => {
           const alreadyExists = peer.getSenders().some(sender => sender.track && sender.track.id === track.id);
@@ -151,7 +146,6 @@ function VideoChat() {
     socket.on("matched", onMatched);
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
-    socket.off("ice-candidate"); // purane listener clear
     socket.on("ice-candidate", onIce);
     socket.on("new-message", onMessage);
     socket.on("partner-left", onPartnerLeft);
@@ -179,7 +173,6 @@ function VideoChat() {
     if (roomIdRef.current) {
       socket.emit("next", { roomId: roomIdRef.current });
     }
-    // 🔥 FIX 2: Close karne se pehle track stop karo, warna naya track add nahi hoga
     if (localVideoRef.current && localVideoRef.current.srcObject) {
       localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
     }
