@@ -21,7 +21,6 @@ function VideoChat() {
   const [onlineCount, setOnlineCount] = useState(0); 
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  // 🔥 iceServers ko useRef me rakha taaki update hone par useEffect na chale
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
 
   const localVideoRef = useRef(null);
@@ -45,7 +44,7 @@ function VideoChat() {
         if (res.ok) {
           const servers = await res.json();
           if (servers && servers.length > 0) {
-            iceServersRef.current = servers; // Ref me save kiya
+            iceServersRef.current = servers; 
             console.log('✅ TURN Credentials loaded');
           }
         }
@@ -56,7 +55,7 @@ function VideoChat() {
     fetchTurnCreds();
   }, []);
 
-  // 🔥 socket.on hamesha ek hi baar chalega ab
+  // 🔥 socket.on hamesha ek hi baar chalega
   useEffect(() => {
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
@@ -77,18 +76,16 @@ function VideoChat() {
       setStatus("connected");
 
       const peer = new RTCPeerConnection({
-        iceServers: iceServersRef.current, // Latest ref use kiya
+        iceServers: iceServersRef.current,
       });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
       
-      // 🔥 Strict check for track
+      // 🔥 FIX 1: Strict track check (Yeh line error khatam karegi)
       if (localStream) {
         localStream.getTracks().forEach((track) => {
-          // Har track add karne se pehle sender check
-          const senders = peer.getSenders();
-          const alreadyExists = senders.find(sender => sender.track && sender.track.id === track.id);
+          const alreadyExists = peer.getSenders().some(sender => sender.track && sender.track.id === track.id);
           if (!alreadyExists) {
             peer.addTrack(track, localStream);
           }
@@ -154,6 +151,7 @@ function VideoChat() {
     socket.on("matched", onMatched);
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
+    socket.off("ice-candidate"); // purane listener clear
     socket.on("ice-candidate", onIce);
     socket.on("new-message", onMessage);
     socket.on("partner-left", onPartnerLeft);
@@ -166,7 +164,7 @@ function VideoChat() {
       socket.off("new-message", onMessage);
       socket.off("partner-left", onPartnerLeft);
     };
-  }, []); // 🔥 Empty array taaki sirf ek baar chale
+  }, []);
 
   const startChat = () => {
     setStatus("searching");
@@ -180,6 +178,10 @@ function VideoChat() {
   const stopChat = () => {
     if (roomIdRef.current) {
       socket.emit("next", { roomId: roomIdRef.current });
+    }
+    // 🔥 FIX 2: Close karne se pehle track stop karo, warna naya track add nahi hoga
+    if (localVideoRef.current && localVideoRef.current.srcObject) {
+      localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
     }
     if (peerRef.current) {
       peerRef.current.close();
