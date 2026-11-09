@@ -22,13 +22,11 @@ function isBlocked(userId) {
   return null;
 }
 
-// 🔥 DONO KO MATCH KARNE KA FUNCTION
 function pairSockets(io, socketA, socketB) {
   const roomId = `${socketA.id}#${socketB.id}`;
   socketA.join(roomId);
   socketB.join(roomId);
 
-  // 🔥 YAHAN FIX HAI: Pichle partner ko save karo
   socketA.data.lastPartner = socketB;
   socketB.data.lastPartner = socketA;
 
@@ -57,7 +55,7 @@ export default function videoChat(io, socket) {
 
   socket.data.country = 'ANY';
   socket.data.userId = null;
-  socket.data.lastPartner = null; // Initialize
+  socket.data.lastPartner = null;
 
   socket.on('identify', ({ userId }) => {
     socket.data.userId = userId;
@@ -71,7 +69,6 @@ export default function videoChat(io, socket) {
     socket.data.country = country || 'ANY';
   });
 
-  // ---- Find Partner (Start dabane pe) ----
   socket.on('find-partner', () => {
     if (socket.data.userId) {
       const blockedUntil = isBlocked(socket.data.userId);
@@ -101,7 +98,6 @@ export default function videoChat(io, socket) {
     socket.to(roomId).emit('signal', { data });
   });
 
-  // ---- Next (Instant Skip + Rematch Logic) ----
   socket.on('next', () => {
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
@@ -109,31 +105,26 @@ export default function videoChat(io, socket) {
       socket.leave(roomId);
     });
 
-    // 1. Purane partner ko yaad karo
     const previousPartner = socket.data.lastPartner;
-    
-    // 2. Khud ko queue se nikal do
     waiting = waiting.filter((w) => w.socket.id !== socket.id);
     
-    // 3. Agar purana partner connected hai, toh usko queue me daal do
     if (previousPartner && previousPartner.connected) {
       if (!waiting.find(w => w.socket.id === previousPartner.id)) {
          waiting.push({ socket: previousPartner, country: previousPartner.data.country });
       }
     }
 
+    // 🔥 FIX: lastPartner clear karo
+    socket.data.lastPartner = null;
+
     const myCountry = socket.data.country;
-    
-    // 4. Queue me koi aur hai kya (naya ya purana)?
     let partnerIndex = waiting.findIndex((w) => w.socket.connected && w.socket.id !== socket.id && (w.country === myCountry || w.country === 'ANY' || myCountry === 'ANY'));
 
     if (partnerIndex !== -1) {
-      // Agar queue me koi hai, toh turant match karo
       const partner = waiting[partnerIndex].socket;
       waiting.splice(partnerIndex, 1);
       pairSockets(io, socket, partner);
     } else {
-      // Agar queue khali hai, toh wait karo
       waiting.push({ socket, country: myCountry });
       socket.emit('waiting');
     }
@@ -143,9 +134,12 @@ export default function videoChat(io, socket) {
     waiting = waiting.filter((w) => w.socket.id !== socket.id);
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
-      socket.to(roomId).emit('partner-disconnected');
+      // 🔥 FIX: Yahan bhi partner-left bhejo frontend ko
+      socket.to(roomId).emit('partner-left'); 
       socket.leave(roomId);
     });
+    // 🔥 FIX: Stop par lastPartner clear karo
+    socket.data.lastPartner = null;
   });
 
   socket.on('chat-message', ({ roomId, message }) => {
@@ -183,6 +177,6 @@ export default function videoChat(io, socket) {
     onlineCount = Math.max(0, onlineCount - 1);
     io.emit('online-count', onlineCount);
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
-    rooms.forEach((roomId) => socket.to(roomId).emit('partner-disconnected'));
+    rooms.forEach((roomId) => socket.to(roomId).emit('partner-left'));
   });
 }
