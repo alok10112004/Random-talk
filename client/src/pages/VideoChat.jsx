@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext"; // 🔥 Context se socket import kiya
 import ReportModal from "../components/ReportModal";
 import TopBar from "../components/TopBar";
 
-// 🔥 Direct Railway Server
-const socket = io("https://random-talk-production.up.railway.app");
-
 function VideoChat() {
   const { user, logout } = useAuth();
+  const socket = useSocket(); // 🔥 Context ka socket use kar rahe hain
   const navigate = useNavigate();
 
   const [partnerId, setPartnerId] = useState(null);
@@ -52,6 +50,8 @@ function VideoChat() {
 
   // 🔥 Socket Events & Online Count
   useEffect(() => {
+    if (!socket) return; // 🔥 Socket load hone tak wait karo
+
     socket.on("online-count", (count) => {
       setOnlineCount(count);
     });
@@ -79,6 +79,7 @@ function VideoChat() {
       const localStream = localVideoRef.current.srcObject;
       if (localStream) {
         localStream.getTracks().forEach((track) => {
+          // 🔥 Track duplicate hone se roko
           const alreadyExists = peer.getSenders().some(sender => sender.track && sender.track.id === track.id);
           if (!alreadyExists) {
             peer.addTrack(track, localStream);
@@ -158,9 +159,10 @@ function VideoChat() {
       socket.off("new-message", onMessage);
       socket.off("partner-left", onPartnerLeft);
     };
-  }, []);
+  }, [socket]); // 🔥 socket dependency
 
   const startChat = () => {
+    if (!socket) return;
     setStatus("searching");
     socket.emit("find-partner", {
       userId: user._id,
@@ -170,7 +172,7 @@ function VideoChat() {
   };
 
   const stopChat = () => {
-    if (roomIdRef.current) {
+    if (roomIdRef.current && socket) {
       socket.emit("next", { roomId: roomIdRef.current });
     }
     if (localVideoRef.current && localVideoRef.current.srcObject) {
@@ -187,7 +189,7 @@ function VideoChat() {
   };
 
   const sendMessage = () => {
-    if (!input.trim() || !roomIdRef.current) return;
+    if (!input.trim() || !roomIdRef.current || !socket) return;
     socket.emit("send-message", {
       roomId: roomIdRef.current,
       message: input,
