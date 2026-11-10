@@ -15,11 +15,12 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// 🔥 CORS FIX: Sabhi origins ko allow karo (Vercel, Localhost, sab)
+// 🔥 CORS FIX: Sabhi origins allow, lekin credentials false
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false // 🔥 YEH CHANGE HUA HAI
 }));
 
 app.use(express.json());
@@ -56,7 +57,7 @@ const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
-    credentials: true,
+    credentials: false, // 🔥 YEH BHI CHANGE HUA HAI
   },
 });
 
