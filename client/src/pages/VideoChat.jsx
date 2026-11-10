@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useSocket } from "../context/SocketContext"; // 🔥 Context se socket import kiya
+import { useSocket } from "../context/SocketContext";
 import ReportModal from "../components/ReportModal";
 import TopBar from "../components/TopBar";
 
 function VideoChat() {
   const { user, logout } = useAuth();
-  const socket = useSocket(); // 🔥 Context ka socket use kar rahe hain
+  const socket = useSocket();
   const navigate = useNavigate();
 
   const [partnerId, setPartnerId] = useState(null);
@@ -50,7 +50,7 @@ function VideoChat() {
 
   // 🔥 Socket Events & Online Count
   useEffect(() => {
-    if (!socket) return; // 🔥 Socket load hone tak wait karo
+    if (!socket) return;
 
     socket.on("online-count", (count) => {
       setOnlineCount(count);
@@ -73,13 +73,17 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
+      // 🔥 FIX: Purana peer band karo
+      if (peerRef.current) {
+        peerRef.current.close();
+      }
+
       const peer = new RTCPeerConnection({ iceServers: iceServersRef.current });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
       if (localStream) {
         localStream.getTracks().forEach((track) => {
-          // 🔥 Track duplicate hone se roko
           const alreadyExists = peer.getSenders().some(sender => sender.track && sender.track.id === track.id);
           if (!alreadyExists) {
             peer.addTrack(track, localStream);
@@ -159,7 +163,7 @@ function VideoChat() {
       socket.off("new-message", onMessage);
       socket.off("partner-left", onPartnerLeft);
     };
-  }, [socket]); // 🔥 socket dependency
+  }, [socket]);
 
   const startChat = () => {
     if (!socket) return;
@@ -175,12 +179,13 @@ function VideoChat() {
     if (roomIdRef.current && socket) {
       socket.emit("next", { roomId: roomIdRef.current });
     }
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
-    }
+    // 🔥 FIX: Pehle peer close karo, fir track stop karo
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
+    }
+    if (localVideoRef.current && localVideoRef.current.srcObject) {
+      localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
     }
     setMessages([]);
     setPartnerId(null);
