@@ -13,8 +13,7 @@ export function SocketProvider({ children }) {
     const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
 
     const s = io(serverUrl, {
-      withCredentials: true,
-      // 'polling' pehle try hoga taaki mobile network par block na ho
+      // 🔥 FIX: withCredentials: true hata diya
       transports: ['polling', 'websocket'], 
     });
 
