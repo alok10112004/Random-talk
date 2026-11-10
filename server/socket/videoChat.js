@@ -50,7 +50,6 @@ function pairSockets(io, socketA, socketB) {
 export default function videoChat(io, socket) {
   console.log('videoChat init for', socket.id);
 
-  // 🔥 Online Count Emit
   onlineCount++;
   io.emit('online-count', onlineCount);
 
@@ -102,7 +101,7 @@ export default function videoChat(io, socket) {
   socket.on('next', () => {
     const rooms = [...socket.rooms].filter((r) => r !== socket.id);
     rooms.forEach((roomId) => {
-      socket.to(roomId).emit('partner-disconnected');
+      socket.to(roomId).emit('partner-left');
       socket.leave(roomId);
     });
 

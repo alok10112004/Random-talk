@@ -22,7 +22,6 @@ function VideoChat() {
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
-
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const peerRef = useRef(null);
@@ -51,9 +50,8 @@ function VideoChat() {
     fetchTurnCreds();
   }, []);
 
-  // 🔥 Socket Online Count & WebRTC
+  // 🔥 Socket Events & Online Count
   useEffect(() => {
-    // 🔥 ONLINE COUNT LISTENER
     socket.on("online-count", (count) => {
       setOnlineCount(count);
     });
@@ -67,7 +65,6 @@ function VideoChat() {
       })
       .catch((err) => {
         console.error("Media error:", err);
-        alert("Camera/Mic permission denied.");
       });
 
     const onMatched = ({ roomId, partnerId, partnerCountry, isInitiator }) => {
@@ -76,13 +73,10 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      const peer = new RTCPeerConnection({
-        iceServers: iceServersRef.current, 
-      });
+      const peer = new RTCPeerConnection({ iceServers: iceServersRef.current });
       peerRef.current = peer;
 
       const localStream = localVideoRef.current.srcObject;
-      
       if (localStream) {
         localStream.getTracks().forEach((track) => {
           const alreadyExists = peer.getSenders().some(sender => sender.track && sender.track.id === track.id);
@@ -156,7 +150,7 @@ function VideoChat() {
     socket.on("partner-left", onPartnerLeft);
 
     return () => {
-      socket.off("online-count"); // Cleanup
+      socket.off("online-count");
       socket.off("matched", onMatched);
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);
