@@ -5,23 +5,27 @@ export function useWebRTC(socket) {
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
   const roomIdRef = useRef(null);
-  
+
   const iceServersRef = useRef([{ urls: 'stun:stun.l.google.com:19302' }]);
 
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
         const baseUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
-        const res = await fetch(`${baseUrl}/api/turn/credentials`);
-        if (res.ok) {
-          const servers = await res.json();
-          if (servers && servers.length > 0) {
-            iceServersRef.current = servers;
-            console.log('✅ TURN Credentials loaded');
-          }
+        const res = await fetch(`${baseUrl}/api/turn`);
+        if (!res.ok) {
+          console.warn('❌ TURN fetch failed, status:', res.status);
+          return;
+        }
+        const servers = await res.json();
+        if (Array.isArray(servers) && servers.length > 0) {
+          iceServersRef.current = servers;
+          console.log('✅ TURN Credentials loaded');
+        } else {
+          console.warn('❌ TURN response empty/invalid:', servers);
         }
       } catch (e) {
-        console.warn('❌ TURN fetch failed');
+        console.warn('❌ TURN fetch failed:', e.message);
       }
     }
     fetchTurnCreds();
@@ -42,10 +46,21 @@ export function useWebRTC(socket) {
 
   const createPeer = useCallback(
     (onRemoteStream) => {
-      if (pcRef.current) pcRef.current.close();
+      if (pcRef.current) {
+        try { pcRef.current.close(); } catch (e) {}
+        pcRef.current = null;
+      }
 
       const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       pcRef.current = pc;
+
+      // Guard: same track dobara add hone par error nahi aayega
+      const originalAddTrack = pc.addTrack.bind(pc);
+      pc.addTrack = (track, ...streams) => {
+        const existing = pc.getSenders().find((s) => s.track === track);
+        if (existing) return existing;
+        return originalAddTrack(track, ...streams);
+      };
 
       // Agar camera pehle se on hai toh track add karo
       if (localStreamRef.current) {
@@ -83,7 +98,7 @@ export function useWebRTC(socket) {
     }
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const videoConstraints = isMobile 
+    const videoConstraints = isMobile
       ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
       : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' };
 

@@ -11,11 +11,19 @@ const PORT = process.env.PORT || 3000;
 // Build folder (dist) serve karo
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Baaki saari requests React Router ko bhej do
-app.get('*', (req, res) => {
+// API ya file wali request ko HTML mat bhejo
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || path.extname(req.path)) {
+    return res.status(404).send('Not found');
+  }
+  next();
+});
+
+// Baaki sab requests React Router ko
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Frontend Server Ready on port ${PORT}`); // 🔥 Yahan change kiya hai
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Frontend Server Ready on port ${PORT}`);
 });

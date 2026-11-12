@@ -5,6 +5,9 @@ import { useSocket } from "../context/SocketContext";
 import ReportModal from "../components/ReportModal";
 import TopBar from "../components/TopBar";
 
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL || "https://random-talk-production.up.railway.app";
+
 function VideoChat() {
   const { user, logout } = useAuth();
   const socket = useSocket();
@@ -16,14 +19,16 @@ function VideoChat() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("idle");
   const [gender, setGender] = useState("male");
-  const [onlineCount, setOnlineCount] = useState(0); 
+  const [onlineCount, setOnlineCount] = useState(0);
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const localStreamRef = useRef(null);
   const peerRef = useRef(null);
   const roomIdRef = useRef(null);
+  const pendingCandidatesRef = useRef([]);
 
   useEffect(() => {
     if (!user) navigate("/login");
@@ -33,32 +38,36 @@ function VideoChat() {
   useEffect(() => {
     async function fetchTurnCreds() {
       try {
-        const res = await fetch(`https://random-talk-production.up.railway.app/api/turn/credentials`);
-        if (res.ok) {
-          const servers = await res.json();
-          if (servers && servers.length > 0) {
-            iceServersRef.current = servers; 
-            console.log('✅ TURN Credentials loaded');
-          }
+        const res = await fetch(`${SERVER_URL}/api/turn`);
+        if (!res.ok) {
+          console.warn("❌ TURN fetch failed, status:", res.status);
+          return;
+        }
+        const servers = await res.json();
+        if (Array.isArray(servers) && servers.length > 0) {
+          iceServersRef.current = servers;
+          console.log("✅ TURN Credentials loaded");
+        } else {
+          console.warn("❌ TURN response invalid:", servers);
         }
       } catch (e) {
-        console.warn('❌ TURN fetch failed');
+        console.warn("❌ TURN fetch failed:", e.message);
       }
     }
     fetchTurnCreds();
   }, []);
 
-  // 🔥 Socket Events & Online Count
+  // 🔥 Camera / Mic (sirf ek baar)
   useEffect(() => {
-    if (!socket) return;
-
-    socket.on("online-count", (count) => {
-      setOnlineCount(count);
-    });
-
+    let cancelled = false;
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
       .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        localStreamRef.current = stream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -67,65 +76,134 @@ function VideoChat() {
         console.error("Media error:", err);
       });
 
+    return () => {
+      cancelled = true;
+      if (peerRef.current) {
+        peerRef.current.close();
+        peerRef.current = null;
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current = null;
+      }
+    };
+  }, []);
+
+  // helper: peer close + remote video clear
+  const closePeer = () => {
+    if (peerRef.current) {
+      peerRef.current.close();
+      peerRef.current = null;
+    }
+    pendingCandidatesRef.current = [];
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+  };
+
+  // 🔥 Socket Events
+  useEffect(() => {
+    if (!socket) return;
+
+    const onOnlineCount = (count) => setOnlineCount(count);
+
+    const flushCandidates = async (peer) => {
+      const list = pendingCandidatesRef.current;
+      pendingCandidatesRef.current = [];
+      for (const c of list) {
+        try {
+          await peer.addIceCandidate(new RTCIceCandidate(c));
+        } catch (e) {
+          console.warn("ICE add failed:", e.message);
+        }
+      }
+    };
+
     const onMatched = ({ roomId, partnerId, partnerCountry, isInitiator }) => {
       roomIdRef.current = roomId;
       setPartnerId(partnerId);
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      if (peerRef.current) {
-        peerRef.current.close();
-      }
+      closePeer();
 
       const peer = new RTCPeerConnection({ iceServers: iceServersRef.current });
       peerRef.current = peer;
 
-      const localStream = localVideoRef.current?.srcObject;
+      const localStream = localStreamRef.current;
       if (localStream) {
         localStream.getTracks().forEach((track) => {
-          peer.addTransceiver(track, { direction: 'sendrecv', streams: [localStream] });
+          peer.addTrack(track, localStream);
         });
+      } else {
+        console.warn("⚠️ Local stream ready nahi hai (camera permission check karo)");
       }
 
       peer.ontrack = (event) => {
+        if (peerRef.current !== peer) return;
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = event.streams[0];
         }
       };
 
       peer.onicecandidate = (event) => {
-        if (event.candidate) {
+        if (event.candidate && peerRef.current === peer) {
           socket.emit("ice-candidate", { roomId, candidate: event.candidate });
         }
       };
 
+      peer.onconnectionstatechange = () => {
+        console.log("📡 PC state:", peer.connectionState);
+      };
+
       if (isInitiator) {
-        peer.createOffer().then((offer) => {
-          peer.setLocalDescription(offer);
-          socket.emit("offer", { roomId, offer });
-        });
+        peer
+          .createOffer()
+          .then(async (offer) => {
+            await peer.setLocalDescription(offer);
+            socket.emit("offer", { roomId, offer });
+          })
+          .catch((e) => console.error("❌ createOffer error:", e));
       }
     };
 
     const onOffer = async ({ offer }) => {
       const peer = peerRef.current;
       if (!peer) return;
-      await peer.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      socket.emit("answer", { roomId: roomIdRef.current, answer });
+      try {
+        await peer.setRemoteDescription(new RTCSessionDescription(offer));
+        await flushCandidates(peer);
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        socket.emit("answer", { roomId: roomIdRef.current, answer });
+      } catch (e) {
+        console.error("❌ onOffer error:", e);
+      }
     };
 
     const onAnswer = async ({ answer }) => {
       const peer = peerRef.current;
       if (!peer) return;
-      await peer.setRemoteDescription(new RTCSessionDescription(answer));
+      try {
+        await peer.setRemoteDescription(new RTCSessionDescription(answer));
+        await flushCandidates(peer);
+      } catch (e) {
+        console.error("❌ onAnswer error:", e);
+      }
     };
 
     const onIce = async ({ candidate }) => {
       const peer = peerRef.current;
-      if (!peer) return;
-      await peer.addIceCandidate(new RTCIceCandidate(candidate));
+      if (!peer || !candidate) return;
+      if (!peer.remoteDescription) {
+        pendingCandidatesRef.current.push(candidate);
+        return;
+      }
+      try {
+        await peer.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn("ICE add failed:", e.message);
+      }
     };
 
     const onMessage = ({ message, senderId }) => {
@@ -137,12 +215,11 @@ function VideoChat() {
       setPartnerId(null);
       setPartnerCountry("");
       setMessages([]);
-      if (peerRef.current) {
-        peerRef.current.close();
-        peerRef.current = null;
-      }
+      roomIdRef.current = null;
+      closePeer();
     };
 
+    socket.on("online-count", onOnlineCount);
     socket.on("matched", onMatched);
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
@@ -151,7 +228,7 @@ function VideoChat() {
     socket.on("partner-left", onPartnerLeft);
 
     return () => {
-      socket.off("online-count");
+      socket.off("online-count", onOnlineCount);
       socket.off("matched", onMatched);
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);
@@ -175,10 +252,8 @@ function VideoChat() {
     if (roomIdRef.current && socket) {
       socket.emit("next", { roomId: roomIdRef.current });
     }
-    if (peerRef.current) {
-      peerRef.current.close();
-      peerRef.current = null;
-    }
+    closePeer();
+    roomIdRef.current = null;
     setMessages([]);
     setPartnerId(null);
     setPartnerCountry("");
@@ -204,18 +279,16 @@ function VideoChat() {
 
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black text-white overflow-hidden flex flex-col">
-      
       <div className="absolute top-0 left-0 w-full z-50">
-        <TopBar 
-          status={status === "searching" ? "waiting" : status} 
-          onlineCount={onlineCount} 
+        <TopBar
+          status={status === "searching" ? "waiting" : status}
+          onlineCount={onlineCount}
           onToggleChat={() => {}}
-          onHelp={() => {}} 
+          onHelp={() => {}}
         />
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 relative pt-16">
-        
         <div className="flex-1 relative bg-gray-900 border-b border-gray-700">
           <video
             ref={remoteVideoRef}
@@ -302,9 +375,9 @@ function VideoChat() {
         </div>
       )}
 
-      <ReportModal 
-        isOpen={isReportOpen} 
-        onClose={() => setIsReportOpen(false)} 
+      <ReportModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
         partnerId={partnerId}
         onReportSubmitted={stopChat}
       />

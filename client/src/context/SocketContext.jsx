@@ -5,16 +5,18 @@ const SocketContext = createContext(null);
 
 export const useSocket = () => useContext(SocketContext);
 
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL || 'https://random-talk-production.up.railway.app';
+
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // 🔥 Vercel ke environment variable se URL aayega (fallback localhost)
-    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
-
-    const s = io(serverUrl, {
-      // 🔥 FIX: withCredentials: true hata diya
-      transports: ['polling', 'websocket'], 
+    const s = io(SERVER_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
 
     s.on('connect', () => console.log('🟢 socket connected successfully:', s.id));
