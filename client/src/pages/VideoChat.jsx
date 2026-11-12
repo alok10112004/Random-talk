@@ -83,10 +83,12 @@ function VideoChat() {
 
       const localStream = localVideoRef.current?.srcObject;
       if (localStream) {
-        // 🔥 FIX: addTrack ki jagah addTransceiver use karo (duplicate error nahi aayega)
+        // 🔥 FIX: Strict track check (duplicate nahi hoga)
+        const senders = peer.getSenders();
         localStream.getTracks().forEach((track) => {
-          if (track.kind === 'video' || track.kind === 'audio') {
-            peer.addTransceiver(track, { direction: 'sendrecv', streams: [localStream] });
+          const alreadyExists = senders.some(sender => sender.track && sender.track.id === track.id);
+          if (!alreadyExists) {
+            peer.addTrack(track, localStream);
           }
         });
       }
@@ -179,13 +181,10 @@ function VideoChat() {
     if (roomIdRef.current && socket) {
       socket.emit("next", { roomId: roomIdRef.current });
     }
-    // 🔥 FIX: Pehle peer close karo, fir track stop karo
+    // 🔥 FIX: Track stop mat karo, sirf peer close karo
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
-    }
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
     }
     setMessages([]);
     setPartnerId(null);
