@@ -15,27 +15,13 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// 🔥 CORS FIX: Vercel ko allow karo
-const allowedOrigins = [
-  'https://random-talk-psi.vercel.app',
-  'http://localhost:5173',
-  'http://localhost:3000'
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+// 🔥 CORS FIX: Sabhi origins ko allow karo (Vercel ho ya Railway)
+app.use(cors({
+  origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // ---- Routes ----
@@ -68,14 +54,7 @@ app.get('/test-turn', async (req, res) => {
 // ---- Socket.io ----
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
+    origin: '*', // 🔥 Socket ke liye bhi open
     methods: ['GET', 'POST']
   },
 });
