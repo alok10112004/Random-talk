@@ -73,7 +73,7 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      // 🔥 FIX: Pehle purana peer close karo
+      // 🔥 FIX: Purana peer band karo
       if (peerRef.current) {
         peerRef.current.close();
       }
@@ -83,12 +83,10 @@ function VideoChat() {
 
       const localStream = localVideoRef.current?.srcObject;
       if (localStream) {
-        // 🔥 FIX: Strict check lagaya hai
-        const senders = peer.getSenders();
+        // 🔥 FIX: addTrack ki jagah addTransceiver use karo (duplicate error nahi aayega)
         localStream.getTracks().forEach((track) => {
-          const trackExists = senders.some(sender => sender.track && sender.track.id === track.id);
-          if (!trackExists) {
-            peer.addTrack(track, localStream);
+          if (track.kind === 'video' || track.kind === 'audio') {
+            peer.addTransceiver(track, { direction: 'sendrecv', streams: [localStream] });
           }
         });
       }
