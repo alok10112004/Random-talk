@@ -73,7 +73,6 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      // 🔥 FIX: Purana peer band karo
       if (peerRef.current) {
         peerRef.current.close();
       }
@@ -83,13 +82,8 @@ function VideoChat() {
 
       const localStream = localVideoRef.current?.srcObject;
       if (localStream) {
-        // 🔥 FIX: Strict track check (duplicate nahi hoga)
-        const senders = peer.getSenders();
         localStream.getTracks().forEach((track) => {
-          const alreadyExists = senders.some(sender => sender.track && sender.track.id === track.id);
-          if (!alreadyExists) {
-            peer.addTrack(track, localStream);
-          }
+          peer.addTransceiver(track, { direction: 'sendrecv', streams: [localStream] });
         });
       }
 
@@ -181,7 +175,6 @@ function VideoChat() {
     if (roomIdRef.current && socket) {
       socket.emit("next", { roomId: roomIdRef.current });
     }
-    // 🔥 FIX: Track stop mat karo, sirf peer close karo
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
