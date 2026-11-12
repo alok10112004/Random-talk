@@ -73,7 +73,7 @@ function VideoChat() {
       setPartnerCountry(partnerCountry || "Unknown");
       setStatus("connected");
 
-      // 🔥 FIX: Purana peer band karo
+      // 🔥 FIX: Pehle purana peer close karo
       if (peerRef.current) {
         peerRef.current.close();
       }
@@ -81,11 +81,13 @@ function VideoChat() {
       const peer = new RTCPeerConnection({ iceServers: iceServersRef.current });
       peerRef.current = peer;
 
-      const localStream = localVideoRef.current.srcObject;
+      const localStream = localVideoRef.current?.srcObject;
       if (localStream) {
+        // 🔥 FIX: Strict check lagaya hai
+        const senders = peer.getSenders();
         localStream.getTracks().forEach((track) => {
-          const alreadyExists = peer.getSenders().some(sender => sender.track && sender.track.id === track.id);
-          if (!alreadyExists) {
+          const trackExists = senders.some(sender => sender.track && sender.track.id === track.id);
+          if (!trackExists) {
             peer.addTrack(track, localStream);
           }
         });
