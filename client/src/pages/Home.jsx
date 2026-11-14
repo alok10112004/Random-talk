@@ -86,7 +86,7 @@ export default function Home() {
     } catch (err) { return null; }
   };
 
-  // Report ke liye bada frame (NSFW check ke liye)
+  // Larger frame used for report moderation checks
   const captureFrame = () => {
     const video = remoteVideoRef.current;
     if (!video || !video.videoWidth) return null;
@@ -161,11 +161,11 @@ export default function Home() {
       setBlockedPermanent(!!permanent);
       setBlockedUntil(until);
     };
-    const onReportAction = () => showToast('Aapki report par action liya gaya. Shukriya! 🙏');
+    const onReportAction = () => showToast('Action has been taken on your report. Thank you.');
     const onWarning = (data) => setWarning(data);
     const onMessageBlocked = () =>
-      showToast('Message block hua: links ya galat shabd allowed nahi hain');
-    const onOutdated = () => alert('Page purana hai, refresh karo (Ctrl + Shift + R).');
+      showToast('Message blocked: links and inappropriate words are not allowed.');
+    const onOutdated = () => alert('This page is outdated. Please refresh it (Ctrl + Shift + R).');
 
     socket.on('waiting', onWaiting); socket.on('matched', onMatched); socket.on('signal', onSignal);
     socket.on('partner-left', onPartnerDisconnected);
@@ -196,7 +196,7 @@ export default function Home() {
   const startChat = async () => {
     if (!socket) return;
     if (!user) {
-      try { await loginAsGuest(); } catch (err) { alert("Guest login failed."); return; }
+      try { await loginAsGuest(); } catch (err) { alert('Guest login failed.'); return; }
     }
     setStatus('starting');
     try {
@@ -340,18 +340,21 @@ export default function Home() {
       {/* 18+ Age Gate */}
       {ageGateOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#fff', color: '#222', borderRadius: '16px', padding: '24px', maxWidth: '380px', width: '100%', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>18+ Only</h2>
+          <div style={{ background: '#fff', color: '#222', borderRadius: '16px', padding: '24px', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>Age Verification</h2>
             <p style={{ fontSize: '14px', lineHeight: 1.5, marginBottom: '12px' }}>
-              Ye site sirf 18 saal ya usse zyada umar ke logon ke liye hai. Nudity, sexual content, harassment aur nabalig (minors) ki mojoodgi allowed nahi hai. Report hone par aapko ban kiya ja sakta hai.
+              Random Talk is intended for adults aged 18 and over. By continuing, you confirm that you are at least 18 years old.
             </p>
-            <p style={{ fontSize: '12px', marginBottom: '16px' }}>
-              Aage badhkar aap{' '}
-              <Link to="/terms" style={{ textDecoration: 'underline' }}>Terms</Link> aur{' '}
-              <Link to="/privacy" style={{ textDecoration: 'underline' }}>Privacy Policy</Link> maante hain.
+            <p style={{ fontSize: '13px', lineHeight: 1.5, marginBottom: '12px', color: '#555' }}>
+              Nudity, sexual content, harassment, and the presence of minors are strictly prohibited. Violations may result in a temporary or permanent ban.
+            </p>
+            <p style={{ fontSize: '12px', marginBottom: '16px', color: '#555' }}>
+              By continuing, you agree to our{' '}
+              <Link to="/terms" style={{ textDecoration: 'underline' }}>Terms of Service</Link> and{' '}
+              <Link to="/privacy" style={{ textDecoration: 'underline' }}>Privacy Policy</Link>.
             </p>
             <button onClick={confirmAge} style={{ width: '100%', background: '#e91e63', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px', fontWeight: 700, cursor: 'pointer', marginBottom: '8px' }}>
-              Main 18+ hoon, aage badho
+              I am 18 or older
             </button>
             <button onClick={() => { window.location.href = 'https://www.google.com'; }} style={{ width: '100%', background: '#eee', color: '#333', border: 'none', borderRadius: '10px', padding: '10px', cursor: 'pointer' }}>
               Exit
