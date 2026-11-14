@@ -15,6 +15,8 @@ export default function ChatPanel({ messages, onSend, connected, onClose }) {
     setInput('');
   };
 
+  const hasUserMessages = messages.some((m) => m.from !== 'system');
+
   return (
     <aside
       className="chat-panel"
@@ -22,8 +24,8 @@ export default function ChatPanel({ messages, onSend, connected, onClose }) {
         background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(20px)',
         borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
-        zIndex: 10, // 🔥 YAHI FIX HAI (Isko 10 kar diya)
-        position: 'relative' // 🔥 Z-index kaam karne ke liye zaroori hai
+        zIndex: 10,
+        position: 'relative',
       }}
     >
       <div className="chat-panel-header" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
@@ -36,37 +38,73 @@ export default function ChatPanel({ messages, onSend, connected, onClose }) {
       </div>
 
       <div className="chat-messages" style={{ background: 'rgba(255,255,255,0.4)' }}>
-        {messages.length === 0 && (
+        {messages.map((m, i) => {
+          // "Stranger is from India 🇮🇳" jaisi system line
+          if (m.from === 'system') {
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: 'center', margin: '6px 0' }}>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 14px',
+                    borderRadius: '999px',
+                    background: 'rgba(0,0,0,0.06)',
+                    color: '#4b5563',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span>{m.text}</span>
+                  {m.code && (
+                    <img
+                      src={`https://flagcdn.com/w40/${String(m.code).toLowerCase()}.png`}
+                      alt={m.code}
+                      width="22"
+                      height="16"
+                      style={{ borderRadius: '2px', objectFit: 'cover' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start',
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: '80%',
+                  padding: '8px 14px',
+                  borderRadius: '16px',
+                  fontSize: '14px',
+                  background: m.from === 'me' ? 'linear-gradient(135deg, #ff6b9d, #ff477e)' : '#e5e7eb',
+                  color: m.from === 'me' ? '#fff' : '#1f2937',
+                  borderBottomRightRadius: m.from === 'me' ? '4px' : '16px',
+                  borderBottomLeftRadius: m.from === 'me' ? '16px' : '4px',
+                  boxShadow: m.from === 'me' ? '0 4px 10px rgba(255, 71, 126, 0.3)' : 'none',
+                }}
+              >
+                {m.text}
+              </div>
+            </div>
+          );
+        })}
+
+        {!hasUserMessages && (
           <div style={{ textAlign: 'center', color: '#6b7280', fontSize: '13px', marginTop: '20px' }}>
             <p>No messages yet</p>
             <p style={{ marginTop: '4px' }}>Say hi 👋</p>
           </div>
         )}
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <div
-              style={{
-                maxWidth: '80%',
-                padding: '8px 14px',
-                borderRadius: '16px',
-                fontSize: '14px',
-                background: m.from === 'me' ? 'linear-gradient(135deg, #ff6b9d, #ff477e)' : '#e5e7eb',
-                color: m.from === 'me' ? '#fff' : '#1f2937',
-                borderBottomRightRadius: m.from === 'me' ? '4px' : '16px',
-                borderBottomLeftRadius: m.from === 'me' ? '16px' : '4px',
-                boxShadow: m.from === 'me' ? '0 4px 10px rgba(255, 71, 126, 0.3)' : 'none',
-              }}
-            >
-              {m.text}
-            </div>
-          </div>
-        ))}
         <div ref={messagesEndRef} />
       </div>
 

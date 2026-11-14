@@ -22,8 +22,6 @@ const WARNINGS = {
   3: { message: 'FINAL WARNING', detail: 'Next report will result in ban.' },
 };
 
-const countryOk = (a, b) => a === b || a === 'ANY' || b === 'ANY';
-
 function removeWaiting(id) {
   waiting = waiting.filter((w) => w.socket.id !== id);
 }
@@ -32,14 +30,13 @@ function leaveAllRooms(s) {
   [...s.rooms].filter((r) => r !== s.id).forEach((r) => s.leave(r));
 }
 
+// Country ab filter nahi hai: duniya ke kisi bhi user se match hota hai
 function tryMatch(socket) {
   removeWaiting(socket.id);
-  const myCountry = socket.data.country;
   const idx = waiting.findIndex(
     (w) =>
       w.socket.connected &&
       w.socket.id !== socket.id &&
-      countryOk(myCountry, w.country) &&
       socket.data.avoid !== w.socket.id &&
       w.socket.data.avoid !== socket.id
   );
@@ -48,7 +45,7 @@ function tryMatch(socket) {
     waiting.splice(idx, 1);
     pairSockets(socket, partner);
   } else {
-    waiting.push({ socket, country: myCountry });
+    waiting.push({ socket });
     socket.emit('waiting');
   }
 }
@@ -195,7 +192,7 @@ export default function videoChat(io, socket) {
   });
 
   socket.on('set-country', ({ country } = {}) => {
-    socket.data.country = String(country || 'ANY').slice(0, 40);
+    socket.data.country = typeof country === 'string' ? country.slice(0, 40) : 'ANY';
   });
 
   socket.on('find-partner', () => {

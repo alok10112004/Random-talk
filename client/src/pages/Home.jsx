@@ -14,6 +14,82 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import SwipeWrapper from '../components/SwipeWrapper';
 import BlockedScreen from './BlockedScreen';
 
+// ---------- Country helpers ----------
+const NO_COUNTRY = ['ANY', 'Any', 'any', 'Unknown', 'unknown', ''];
+
+const ALIASES = {
+  usa: 'US',
+  'united states': 'US',
+  'united states of america': 'US',
+  uk: 'GB',
+  'united kingdom': 'GB',
+  'great britain': 'GB',
+  uae: 'AE',
+  dubai: 'AE',
+  'united arab emirates': 'AE',
+  russia: 'RU',
+  'south korea': 'KR',
+  korea: 'KR',
+  'north korea': 'KP',
+  vietnam: 'VN',
+  turkey: 'TR',
+  'türkiye': 'TR',
+  iran: 'IR',
+  syria: 'SY',
+  'ivory coast': 'CI',
+  laos: 'LA',
+};
+
+let NAME_MAP = null;
+function getNameMap() {
+  if (NAME_MAP) return NAME_MAP;
+  NAME_MAP = {};
+  try {
+    const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+    const A = 65;
+    for (let i = 0; i < 26; i++) {
+      for (let j = 0; j < 26; j++) {
+        const code = String.fromCharCode(A + i, A + j);
+        try {
+          const name = dn.of(code);
+          if (name && name !== code) NAME_MAP[name.toLowerCase()] = code;
+        } catch (e) { /* invalid code */ }
+      }
+    }
+  } catch (e) { /* Intl not supported */ }
+  return NAME_MAP;
+}
+
+// "IN" / "India" / { code: "IN" } -> { code: "IN", name: "India" }
+function resolveCountry(raw) {
+  let v = raw;
+  if (v && typeof v === 'object') {
+    v = v.code || v.iso2 || v.cca2 || v.value || v.name || v.label || '';
+  }
+  v = String(v || '').trim();
+  if (!v || NO_COUNTRY.includes(v)) return null;
+
+  let code = null;
+  if (/^[A-Za-z]{2}$/.test(v)) code = v.toUpperCase();
+  else {
+    const key = v.toLowerCase();
+    code = ALIASES[key] || getNameMap()[key] || null;
+  }
+  if (code) {
+    let name = code;
+    try { name = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code; } catch (e) {}
+    return { code, name };
+  }
+  return { code: null, name: v };
+}
+
+function flagEmoji(code) {
+  if (!code) return '';
+  try {
+    return String.fromCodePoint(...[...code.toUpperCase()].map((c) => 127397 + c.charCodeAt(0)));
+  } catch (e) { return ''; }
+}
+
 export default function Home() {
   const socket = useSocket();
   const { user, loginAsGuest } = useAuth();
@@ -39,9 +115,12 @@ export default function Home() {
   const [warning, setWarning] = useState(null);
   const [partnerCountry, setPartnerCountry] = useState(null);
   const [partnerHistory, setPartnerHistory] = useState([]);
+  const [countryBanner, setCountryBanner] = useState(null); // { text, code }
   const partnerHistoryRef = useRef([]);
   const currentPartnerRef = useRef(null);
   const reportFrameRef = useRef(null);
+  const announceTimerRef = useRef(null);
+  const announcedRoomRef = useRef(null);
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth <= 768
   );
@@ -63,9 +142,45 @@ export default function Home() {
     cleanup,
   } = useWebRTC(socket);
 
+  // Apni country server ko bhejo (reconnect par bhi dobara)
   useEffect(() => {
-    if (socket) socket.emit('set-country', { country });
+    if (!socket) return undefined;
+    const send = () => {
+      let value = 'ANY';
+      if (typeof country === 'string') {
+        value = country || 'ANY';
+      } else {
+        const r = resolveCountry(country);
+        value = r ? r.code || r.name : 'ANY';
+      }
+      socket.emit('set-country', { country: value });
+    };
+    send();
+    socket.on('connect', send);
+    return () => socket.off('connect', send);
   }, [socket, country]);
+
+  // ---- "Stranger is from ..." announcement ----
+  const clearAnnounce = () => {
+    if (announceTimerRef.current) {
+      clearTimeout(announceTimerRef.current);
+      announceTimerRef.current = null;
+    }
+    announcedRoomRef.current = null;
+    setCountryBanner(null);
+  };
+
+  // 1 second stranger screen par dikhao, phir chat box me line (jab tak baat chale)
+  const announcePartner = (roomId, info) => {
+    if (!info || announcedRoomRef.current === roomId) return;
+    announcedRoomRef.current = roomId;
+      const chatText = `Stranger is from ${info.name}`;
+    setCountryBanner({ text: chatText, code: info.code });
+    announceTimerRef.current = setTimeout(() => {
+      setCountryBanner(null);
+      setMessages((prev) => [{ from: 'system', text: chatText, code: info.code }, ...prev]);
+    }, 1000);
+  };
 
   const captureThumbnail = () => {
     const video = remoteVideoRef.current;
@@ -125,11 +240,13 @@ export default function Home() {
     if (user?.uid) socket.emit('identify', { userId: user.uid });
     const onWaiting = () => { setStatus('waiting'); setPartnerCountry(null); };
     const onMatched = async ({ roomId, partnerId, initiator, partnerCountry }) => {
+      clearAnnounce();
       roomIdRef.current = roomId;
       currentPartnerRef.current = partnerId;
       setStatus('connecting');
       setMessages([]);
       setPartnerCountry(partnerCountry || 'ANY');
+      const info = resolveCountry(partnerCountry);
       let localStream = localStreamRef.current;
       if (!localStream) {
         localStream = await startLocalStream();
@@ -139,12 +256,14 @@ export default function Home() {
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
         addPartnerToHistory(partnerId);
         setStatus('connected');
+        if (info) announcePartner(roomId, info);
       });
       localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
       if (initiator) await makeOffer();
     };
     const onSignal = ({ data }) => handleSignal(data);
     const onPartnerDisconnected = () => {
+      clearAnnounce();
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       setStatus('waiting');
       setMessages([]);
@@ -219,6 +338,7 @@ export default function Home() {
 
   const handleNext = () => {
     if (!socket) return;
+    clearAnnounce();
     setStatus('waiting'); setMessages([]); setPartnerCountry(null);
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
@@ -226,6 +346,7 @@ export default function Home() {
   };
 
   const handleStop = () => {
+    clearAnnounce();
     cleanup();
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -252,6 +373,7 @@ export default function Home() {
     reportFrameRef.current = null;
     showToast(t('report.toast.auto'));
     setTimeout(() => {
+      clearAnnounce();
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
       setStatus('waiting'); setMessages([]); setPartnerCountry(null);
@@ -310,6 +432,21 @@ export default function Home() {
               <div className="chat-video-tile video-stranger-tile" style={{ position: 'relative' }}>
                 <video ref={remoteVideoRef} autoPlay playsInline />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
+                {countryBanner && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', maxWidth: '90%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(0,0,0,0.65)', color: '#fff', padding: '10px 18px', borderRadius: '999px', fontSize: '15px', fontWeight: 600, zIndex: 40, backdropFilter: 'blur(4px)', pointerEvents: 'none' }}>
+                    <span>{countryBanner.text}</span>
+                    {countryBanner.code && (
+                      <img
+                        src={`https://flagcdn.com/w40/${countryBanner.code.toLowerCase()}.png`}
+                        alt={countryBanner.code}
+                        width="28"
+                        height="20"
+                        style={{ borderRadius: '3px', objectFit: 'cover' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    )}
+                  </div>
+                )}
                 {status === 'connected' && (
                   <button onClick={openReport} style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'rgba(0, 0, 0, 0.4)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }} title="Report User">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
