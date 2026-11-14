@@ -157,7 +157,7 @@ export function recordReport({ targetDevice, targetIp, reporterDevice, verdict }
     reportsByTarget.delete(key);
     return { ban: true, ...applyBan(targetDevice, targetIp) };
   }
-  return { ban: false };
+  return { ban: false, count: list.length };
 }
 
 // ---------- NSFW detector (Sightengine, optional) ----------
