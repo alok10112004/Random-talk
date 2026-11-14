@@ -83,13 +83,6 @@ function resolveCountry(raw) {
   return { code: null, name: v };
 }
 
-function flagEmoji(code) {
-  if (!code) return '';
-  try {
-    return String.fromCodePoint(...[...code.toUpperCase()].map((c) => 127397 + c.charCodeAt(0)));
-  } catch (e) { return ''; }
-}
-
 export default function Home() {
   const socket = useSocket();
   const { user, loginAsGuest } = useAuth();
@@ -117,6 +110,7 @@ export default function Home() {
   const [partnerHistory, setPartnerHistory] = useState([]);
   const [countryBanner, setCountryBanner] = useState(null); // { text, code }
   const partnerHistoryRef = useRef([]);
+  const historyRoomRef = useRef(null);
   const currentPartnerRef = useRef(null);
   const reportFrameRef = useRef(null);
   const announceTimerRef = useRef(null);
@@ -174,7 +168,7 @@ export default function Home() {
   const announcePartner = (roomId, info) => {
     if (!info || announcedRoomRef.current === roomId) return;
     announcedRoomRef.current = roomId;
-      const chatText = `Stranger is from ${info.name}`;
+    const chatText = `Stranger is from ${info.name}`;
     setCountryBanner({ text: chatText, code: info.code });
     announceTimerRef.current = setTimeout(() => {
       setCountryBanner(null);
@@ -221,11 +215,15 @@ export default function Home() {
     setReportOpen(true);
   };
 
+  // Ek stranger ki sirf ek entry (purani hat jati hai)
   const addPartnerToHistory = (partnerId) => {
     setTimeout(() => {
       const thumb = captureThumbnail();
       const partner = { id: partnerId, thumbnail: thumb, timestamp: Date.now() };
-      const newHistory = [partner, ...partnerHistoryRef.current].slice(0, 5);
+      const newHistory = [
+        partner,
+        ...partnerHistoryRef.current.filter((p) => p.id !== partnerId),
+      ].slice(0, 5);
       partnerHistoryRef.current = newHistory;
       setPartnerHistory(newHistory);
     }, 2000);
@@ -254,7 +252,11 @@ export default function Home() {
       }
       const pc = createPeer((remoteStream) => {
         if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
-        addPartnerToHistory(partnerId);
+        // ontrack audio aur video dono ke liye chalta hai, history me ek hi baar jodo
+        if (historyRoomRef.current !== roomId) {
+          historyRoomRef.current = roomId;
+          addPartnerToHistory(partnerId);
+        }
         setStatus('connected');
         if (info) announcePartner(roomId, info);
       });
@@ -264,6 +266,7 @@ export default function Home() {
     const onSignal = ({ data }) => handleSignal(data);
     const onPartnerDisconnected = () => {
       clearAnnounce();
+      currentPartnerRef.current = null;
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       setStatus('waiting');
       setMessages([]);
@@ -339,6 +342,7 @@ export default function Home() {
   const handleNext = () => {
     if (!socket) return;
     clearAnnounce();
+    currentPartnerRef.current = null;
     setStatus('waiting'); setMessages([]); setPartnerCountry(null);
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
@@ -347,6 +351,7 @@ export default function Home() {
 
   const handleStop = () => {
     clearAnnounce();
+    currentPartnerRef.current = null;
     cleanup();
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -374,6 +379,7 @@ export default function Home() {
     showToast(t('report.toast.auto'));
     setTimeout(() => {
       clearAnnounce();
+      currentPartnerRef.current = null;
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
       if (pcRef?.current) { try { pcRef.current.close(); pcRef.current = null; } catch (e) {} }
       setStatus('waiting'); setMessages([]); setPartnerCountry(null);

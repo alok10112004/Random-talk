@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const CONTACT_EMAIL = 'YOUR_EMAIL@gmail.com'; // 🔥 apna contact email yahan daalo
+const CONTACT_EMAIL = 'alok10112004@gmail.com'; 
 const LAST_UPDATED = 'November 2026';
 
 const SECTIONS = [
