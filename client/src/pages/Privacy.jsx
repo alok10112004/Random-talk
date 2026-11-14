@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const CONTACT_EMAIL = 'alok10112004@gmail.com'; 
+const CONTACT_EMAIL = 'alok10112004@gmail.com';
 const LAST_UPDATED = 'November 2026';
 
 const SECTIONS = [
@@ -20,6 +20,7 @@ const SECTIONS = [
       'Device identifier: a random identifier generated in your browser and stored in local storage. It is used to enforce bans and prevent repeat abuse. It does not contain your name or any personal details.',
       'Preferences: choices such as your selected country and your confirmation that you are 18 or older, stored in your browser.',
       'Safety and moderation records: if a report is filed against a device, or a ban is applied, we store the device identifier, IP address, ban duration, reason, and a count of previous violations.',
+      'Website analytics: aggregated, cookie-free statistics such as page views, country, device type, and referring site.',
     ],
   },
   {
@@ -48,6 +49,7 @@ const SECTIONS = [
       'To detect, prevent, and respond to abuse, harassment, nudity, spam, and illegal activity.',
       'To enforce our Terms of Service, including bans and appeals.',
       'To maintain the security, stability, and performance of the Service.',
+      'To understand, in aggregate form, how the Service is used so that we can improve it.',
       'To comply with legal obligations and respond to lawful requests.',
     ],
     paragraphs: [
@@ -71,6 +73,7 @@ const SECTIONS = [
       'Database provider (MongoDB Atlas): stores safety and moderation records.',
       'Content-moderation provider: analyses report images to detect prohibited content.',
       'Authentication provider (Google Firebase): creates an anonymous guest session so that you can use the Service without registering.',
+      'Website analytics (Cloudflare Web Analytics): a privacy-focused service that measures aggregated visits without using cookies or tracking users across websites.',
       'Image delivery (flagcdn.com): provides country flag images, which means your browser connects to that service when a flag is displayed.',
     ],
   },
@@ -81,6 +84,7 @@ const SECTIONS = [
       'Report images: kept in temporary memory for up to 24 hours.',
       'Ban and moderation records: kept for as long as necessary to enforce bans, prevent repeat abuse, and meet legal obligations.',
       'Server and security logs: kept for a limited period for security and troubleshooting.',
+      'Analytics data: kept in aggregated form by our analytics provider for a limited period.',
     ],
   },
   {
