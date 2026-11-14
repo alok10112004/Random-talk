@@ -4,9 +4,10 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import videoChat from './socket/videoChat.js';
+import videoChat, { enforceBans, notifyReporters } from './socket/videoChat.js';
 import authRoutes from './routes/auth.js';
 import countryRoutes from './routes/countries.js';
+import { createAdminRouter } from './admin.js';
 import { loadBans } from './moderation.js';
 
 dotenv.config();
@@ -17,7 +18,7 @@ const server = http.createServer(app);
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
 }));
 app.use(express.json());
 
@@ -62,7 +63,7 @@ app.get('/api/turn', turnRateLimit, async (req, res) => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ttl: 14400 }), // 4 ghante
+        body: JSON.stringify({ ttl: 14400 }),
       }
     );
     const data = await response.json();
@@ -87,6 +88,15 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   videoChat(io, socket);
 });
+
+// ---- Admin panel (/admin) ----
+app.use(
+  '/admin',
+  createAdminRouter({
+    onBansChanged: () => enforceBans(io),
+    notifyReporters: (ids) => notifyReporters(io, ids),
+  })
+);
 
 // ---- DB + Start ----
 const PORT = process.env.PORT || 5000;

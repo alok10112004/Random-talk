@@ -1,8 +1,10 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
+const PERMANENT_UNTIL = 253402300799000; // saal 9999
 
 // ---------- Settings ----------
 const BAN_STEPS = [
@@ -11,23 +13,33 @@ const BAN_STEPS = [
   7 * DAY,                                           // 3rd
   30 * DAY,                                          // 4th+
 ];
-const IP_MAX_BAN = 24 * HOUR;   // IP par max itna ban (shared IP ka nuksan kam)
-const IP_SHARED_LIMIT = 15;     // ek IP par itne devices dikhe to IP ban skip
+const IP_MAX_BAN = 24 * HOUR;
+const IP_MAX_BAN_PERMANENT = 7 * DAY;
+const IP_SHARED_LIMIT = 15;
 const NSFW_THRESHOLD = Number(process.env.REPORT_NSFW_THRESHOLD || 2);
+const SERIOUS_THRESHOLD = Number(process.env.REPORT_SERIOUS_THRESHOLD || 2);
 const ANY_THRESHOLD = Number(process.env.REPORT_ANY_THRESHOLD || 4);
 const MAX_REPORTS_PER_DAY = 10;
 const MAX_CLEAN_REPORTS = 4;
+const QUEUE_MAX = 100;
+
+export const VALID_REASONS = ['nudity', 'harassment', 'minor', 'violence', 'spam'];
+const SERIOUS_REASONS = ['nudity', 'minor'];
 
 // ---------- Storage ----------
-const bans = new Map();            // key -> { until, strikes }
-const reportsByTarget = new Map(); // key -> [{ reporter, nsfw, ts }]
+const bans = new Map();            // key -> { until, strikes, reason, permanent, grp }
+const reportsByTarget = new Map(); // key -> [{ reporter, nsfw, reason, ts }]
 const reporterStats = new Map();   // deviceId -> { reports: [], clean: [] }
 const ipDevices = new Map();       // ip -> Map(deviceId -> lastSeen)
+const queue = [];                  // admin review queue (sirf memory me)
 
 const banSchema = new mongoose.Schema({
   key: { type: String, unique: true },
   until: { type: Number, default: 0 },
   strikes: { type: Number, default: 0 },
+  reason: { type: String, default: null },
+  permanent: { type: Boolean, default: false },
+  grp: { type: String, default: null },
 });
 const BanModel = mongoose.models.Ban || mongoose.model('Ban', banSchema);
 
@@ -43,7 +55,15 @@ export async function loadBans() {
   if (mongoose.connection.readyState !== 1) return;
   try {
     const docs = await BanModel.find({}).lean();
-    docs.forEach((d) => bans.set(d.key, { until: d.until, strikes: d.strikes }));
+    docs.forEach((d) =>
+      bans.set(d.key, {
+        until: d.until,
+        strikes: d.strikes,
+        reason: d.reason || null,
+        permanent: !!d.permanent,
+        grp: d.grp || null,
+      })
+    );
     console.log(`🛡️ ${docs.length} ban records loaded`);
   } catch (e) {
     console.error('Ban load error:', e.message);
@@ -94,41 +114,58 @@ export function makeLimiter(max, windowMs) {
 }
 
 // ---------- Ban check / apply ----------
-export function checkBan(deviceId, ip) {
+// Return: null ya { until, reason, permanent }
+export function getBanInfo(deviceId, ip) {
   const now = Date.now();
-  let until = 0;
+  let best = null;
   for (const key of [deviceId ? `d:${deviceId}` : null, ip ? `i:${ip}` : null]) {
     if (!key) continue;
     const rec = bans.get(key);
-    if (rec && rec.until > now && rec.until > until) until = rec.until;
+    if (rec && rec.until > now && (!best || rec.until > best.until)) best = rec;
   }
-  return until;
+  if (!best) return null;
+  return { until: best.until, reason: best.reason || null, permanent: !!best.permanent };
 }
 
-function applyBan(deviceId, ip) {
+function applyBan(deviceId, ip, { reason = null, permanent = false } = {}) {
   const now = Date.now();
   const dKey = deviceId ? `d:${deviceId}` : null;
   const iKey = ip ? `i:${ip}` : null;
   const dRec = dKey ? bans.get(dKey) : null;
   const iRec = iKey ? bans.get(iKey) : null;
+  const grp = crypto.randomUUID();
 
   const strikes = (dKey ? dRec?.strikes || 0 : iRec?.strikes || 0) + 1;
   const duration = BAN_STEPS[Math.min(strikes - 1, BAN_STEPS.length - 1)];
+  const dUntil = permanent ? PERMANENT_UNTIL : now + duration;
 
-  if (dKey) saveBan(dKey, { until: now + duration, strikes });
+  if (dKey) saveBan(dKey, { until: dUntil, strikes, reason, permanent, grp });
   if (iKey && !isSharedIp(ip)) {
+    const ipDur = Math.min(duration, permanent ? IP_MAX_BAN_PERMANENT : IP_MAX_BAN);
     saveBan(iKey, {
-      until: now + Math.min(duration, IP_MAX_BAN),
+      until: now + ipDur,
       strikes: dKey ? iRec?.strikes || 0 : strikes,
+      reason,
+      permanent: false,
+      grp,
     });
   } else if (iKey) {
     console.log(`⚠️ IP ${ip} shared lag raha hai, IP ban skip kiya (sirf device ban)`);
   }
-  return { until: now + duration, strikes };
+  return { until: dUntil, strikes };
 }
 
 // ---------- Reports ----------
-export function recordReport({ targetDevice, targetIp, reporterDevice, verdict }) {
+function pickReason(list) {
+  if (list.some((x) => x.reason === 'minor')) return 'minor';
+  if (list.some((x) => x.nsfw)) return 'nudity';
+  for (const r of ['nudity', 'violence', 'harassment', 'spam']) {
+    if (list.some((x) => x.reason === r)) return r;
+  }
+  return null;
+}
+
+export function recordReport({ targetDevice, targetIp, reporterDevice, verdict, reason }) {
   const now = Date.now();
 
   const stats = reporterStats.get(reporterDevice) || { reports: [], clean: [] };
@@ -146,18 +183,112 @@ export function recordReport({ targetDevice, targetIp, reporterDevice, verdict }
   const same = list.find((r) => r.reporter === reporterDevice);
   if (same) {
     same.nsfw = same.nsfw || verdict === 'nsfw';
+    same.reason = same.reason === 'minor' ? 'minor' : reason;
     same.ts = now;
   } else {
-    list.push({ reporter: reporterDevice, nsfw: verdict === 'nsfw', ts: now });
+    list.push({ reporter: reporterDevice, nsfw: verdict === 'nsfw', reason, ts: now });
   }
   reportsByTarget.set(key, list);
 
   const nsfwCount = list.filter((r) => r.nsfw).length;
-  if (nsfwCount >= NSFW_THRESHOLD || list.length >= ANY_THRESHOLD) {
+  const seriousCount = list.filter((r) => SERIOUS_REASONS.includes(r.reason)).length;
+
+  if (nsfwCount >= NSFW_THRESHOLD || seriousCount >= SERIOUS_THRESHOLD || list.length >= ANY_THRESHOLD) {
+    const banReason = pickReason(list);
+    const reporters = list.map((r) => r.reporter);
     reportsByTarget.delete(key);
-    return { ban: true, ...applyBan(targetDevice, targetIp) };
+    return { ban: true, reporters, reason: banReason, ...applyBan(targetDevice, targetIp, { reason: banReason }) };
   }
   return { ban: false, count: list.length };
+}
+
+// ---------- Admin review queue ----------
+export function queueReport({ reason, targetDevice, targetIp, reporterDevice, verdict, image, count }) {
+  const idx = queue.findIndex(
+    (q) => q.targetDevice === targetDevice && q.reporterDevice === reporterDevice
+  );
+  if (idx !== -1) queue.splice(idx, 1);
+  queue.unshift({
+    id: crypto.randomUUID(),
+    ts: Date.now(),
+    reason,
+    targetDevice,
+    targetIp,
+    reporterDevice,
+    verdict,
+    count: count || 1,
+    urgent: reason === 'minor',
+    image: typeof image === 'string' && image.length < 300_000 ? image : null,
+  });
+  while (queue.length > QUEUE_MAX) queue.pop();
+}
+
+export function getQueue() {
+  const now = Date.now();
+  return queue
+    .filter((q) => now - q.ts < DAY)
+    .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.ts - a.ts)
+    .map((q) => ({
+      id: q.id,
+      ts: q.ts,
+      reason: q.reason,
+      verdict: q.verdict,
+      count: q.count,
+      urgent: q.urgent,
+      image: q.image,
+      target: String(q.targetDevice || '').slice(0, 8),
+    }));
+}
+
+export function removeQueueItem(id) {
+  const idx = queue.findIndex((q) => q.id === id);
+  if (idx === -1) return null;
+  return queue.splice(idx, 1)[0];
+}
+
+// Is target ki saari queue entries hatao, reporters ki list wapas do
+export function removeQueueByTarget(targetDevice) {
+  const reporters = [];
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].targetDevice === targetDevice) {
+      reporters.push(queue[i].reporterDevice);
+      queue.splice(i, 1);
+    }
+  }
+  return reporters;
+}
+
+// ---------- Admin actions ----------
+export function adminBan({ targetDevice, targetIp, permanent, reason }) {
+  return applyBan(targetDevice, targetIp, { reason, permanent: !!permanent });
+}
+
+export function listBans() {
+  const now = Date.now();
+  return [...bans.entries()]
+    .filter(([, r]) => r.until > now)
+    .map(([key, r]) => ({
+      key,
+      until: r.until,
+      permanent: !!r.permanent,
+      reason: r.reason || null,
+      strikes: r.strikes || 0,
+    }))
+    .sort((a, b) => b.until - a.until);
+}
+
+// Ek key ka ban hatao (usi group ke baaki keys bhi: device + IP)
+export function unbanGroup(key) {
+  const rec = bans.get(key);
+  if (!rec) return false;
+  const keys = [...bans.entries()]
+    .filter(([k, r]) => k === key || (rec.grp && r.grp === rec.grp))
+    .map(([k]) => k);
+  keys.forEach((k) => {
+    const r = bans.get(k);
+    saveBan(k, { ...r, until: 0, permanent: false, strikes: Math.max(0, (r.strikes || 0) - 1) });
+  });
+  return true;
 }
 
 // ---------- NSFW detector (Sightengine, optional) ----------
@@ -233,5 +364,8 @@ setInterval(() => {
     s.reports = s.reports.filter((t) => now - t < DAY);
     s.clean = s.clean.filter((t) => now - t < DAY);
     if (!s.reports.length && !s.clean.length) reporterStats.delete(k);
+  }
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (now - queue[i].ts > DAY) queue.splice(i, 1); // purane screenshots hata do
   }
 }, HOUR).unref();

@@ -2,11 +2,14 @@ import {
   getClientIp,
   isValidDeviceId,
   noteDevice,
-  checkBan,
+  getBanInfo,
   recordReport,
+  queueReport,
+  removeQueueByTarget,
   checkImageNsfw,
   makeLimiter,
   cleanMessage,
+  VALID_REASONS,
 } from '../moderation.js';
 
 let waiting = [];
@@ -50,7 +53,6 @@ function tryMatch(socket) {
   }
 }
 
-// socket ko room se nikalo, partner ko batao aur partner ko wapas queue me daalo
 function detach(io, socket) {
   const p = socket.data.partner;
   const rooms = [...socket.rooms].filter((r) => r !== socket.id);
@@ -104,11 +106,37 @@ function pairSockets(socketA, socketB) {
   console.log(`✅ matched: ${socketA.id} <-> ${socketB.id}`);
 }
 
-function kick(io, s, until) {
+function blockPayload(info) {
+  return {
+    until: info.until,
+    remainingMs: info.until - Date.now(),
+    reason: info.reason,
+    permanent: info.permanent,
+  };
+}
+
+function kick(io, s, info) {
   removeWaiting(s.id);
-  s.emit('you-are-blocked', { until, remainingMs: until - Date.now() });
+  s.emit('you-are-blocked', blockPayload(info));
   detach(io, s);
   setTimeout(() => s.disconnect(true), 500);
+}
+
+// Jitne connected users ban list me aate hain unko nikalo
+export function enforceBans(io) {
+  io.sockets.sockets.forEach((s) => {
+    const info = getBanInfo(s.data.deviceId, s.data.ip);
+    if (info) kick(io, s, info);
+  });
+}
+
+// Report karne walon ko batao ki action liya gaya
+export function notifyReporters(io, deviceIds = []) {
+  const set = new Set(deviceIds.filter(Boolean));
+  if (!set.size) return;
+  io.sockets.sockets.forEach((s) => {
+    if (set.has(s.data.deviceId)) s.emit('report-action');
+  });
 }
 
 // Sirf unhi logo ko report kar sakte ho jinse tum match hue the
@@ -136,9 +164,9 @@ export default function videoChat(io, socket) {
   socket.data.deviceId = deviceId;
   noteDevice(ip, deviceId);
 
-  const bannedUntil = checkBan(deviceId, ip);
-  if (bannedUntil) {
-    socket.emit('you-are-blocked', { until: bannedUntil, remainingMs: bannedUntil - Date.now() });
+  const info = getBanInfo(deviceId, ip);
+  if (info) {
+    socket.emit('you-are-blocked', blockPayload(info));
     setTimeout(() => socket.disconnect(true), 300);
     return;
   }
@@ -172,9 +200,9 @@ export default function videoChat(io, socket) {
 
   socket.on('find-partner', () => {
     if (!limits.find()) return;
-    const until = checkBan(socket.data.deviceId, socket.data.ip);
-    if (until) return kick(io, socket, until);
-    if (socket.data.partner) return; // pehle se match hai
+    const b = getBanInfo(socket.data.deviceId, socket.data.ip);
+    if (b) return kick(io, socket, b);
+    if (socket.data.partner) return;
     tryMatch(socket);
   });
 
@@ -214,6 +242,7 @@ export default function videoChat(io, socket) {
     if (!target || !target.deviceId) return;
     socket.data.avoid = target.id;
 
+    const cleanReason = VALID_REASONS.includes(reason) ? reason : 'harassment';
     const img = typeof image === 'string' && image.length < 1_500_000 ? image : null;
     const verdict = img ? await checkImageNsfw(img) : null;
 
@@ -222,24 +251,35 @@ export default function videoChat(io, socket) {
       targetIp: target.ip,
       reporterDevice: socket.data.deviceId,
       verdict,
+      reason: cleanReason,
     });
     console.log(
-      `🚩 report reason=${reason} target=${target.id} verdict=${verdict} -> ${
+      `🚩 report reason=${cleanReason} target=${target.id} verdict=${verdict} -> ${
         result.ban ? 'BAN' : result.ignored ? 'ignored' : `counted(${result.count})`
       }`
     );
-    if (reason === 'minor') console.warn(`⚠️ MINOR report on target=${target.id}, logs check karo`);
+    if (cleanReason === 'minor') console.warn(`⚠️ MINOR report on target=${target.id}, /admin check karo`);
 
     if (result.ban) {
-      io.sockets.sockets.forEach((s) => {
-        const until = checkBan(s.data.deviceId, s.data.ip);
-        if (until) kick(io, s, until);
+      removeQueueByTarget(target.deviceId);
+      enforceBans(io);
+      notifyReporters(io, result.reporters);
+    } else if (!result.ignored) {
+      queueReport({
+        reason: cleanReason,
+        targetDevice: target.deviceId,
+        targetIp: target.ip,
+        reporterDevice: socket.data.deviceId,
+        verdict,
+        image: img,
+        count: result.count,
       });
-    } else if (!result.ignored && result.count >= 2) {
-      const targetSocket = io.sockets.sockets.get(target.id);
-      if (targetSocket && targetSocket.data.deviceId === target.deviceId) {
-        const level = result.count === 2 ? 1 : 3;
-        targetSocket.emit('warning', { level, ...WARNINGS[level] });
+      if (result.count >= 2) {
+        const targetSocket = io.sockets.sockets.get(target.id);
+        if (targetSocket && targetSocket.data.deviceId === target.deviceId) {
+          const level = result.count === 2 ? 1 : 3;
+          targetSocket.emit('warning', { level, ...WARNINGS[level] });
+        }
       }
     }
   });

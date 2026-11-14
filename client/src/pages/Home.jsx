@@ -34,6 +34,8 @@ export default function Home() {
   const [toast, setToast] = useState(null);
   const [onlineCount, setOnlineCount] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState(null);
+  const [blockedReason, setBlockedReason] = useState(null);
+  const [blockedPermanent, setBlockedPermanent] = useState(false);
   const [warning, setWarning] = useState(null);
   const [partnerCountry, setPartnerCountry] = useState(null);
   const [partnerHistory, setPartnerHistory] = useState([]);
@@ -154,7 +156,12 @@ export default function Home() {
     };
     const onReportReceived = () => showToast(t('report.toast'));
     const onOnlineCount = (count) => setOnlineCount(count);
-    const onBlocked = ({ until }) => setBlockedUntil(until);
+    const onBlocked = ({ until, reason, permanent }) => {
+      setBlockedReason(reason || null);
+      setBlockedPermanent(!!permanent);
+      setBlockedUntil(until);
+    };
+    const onReportAction = () => showToast('Aapki report par action liya gaya. Shukriya! 🙏');
     const onWarning = (data) => setWarning(data);
     const onMessageBlocked = () =>
       showToast('Message block hua: links ya galat shabd allowed nahi hain');
@@ -167,6 +174,7 @@ export default function Home() {
     socket.on('report-received', onReportReceived); socket.on('online-count', onOnlineCount);
     socket.on('you-are-blocked', onBlocked); socket.on('warning', onWarning);
     socket.on('message-blocked', onMessageBlocked); socket.on('outdated-client', onOutdated);
+    socket.on('report-action', onReportAction);
     return () => {
       socket.off('waiting', onWaiting); socket.off('matched', onMatched); socket.off('signal', onSignal);
       socket.off('partner-left', onPartnerDisconnected);
@@ -175,6 +183,7 @@ export default function Home() {
       socket.off('report-received', onReportReceived); socket.off('online-count', onOnlineCount);
       socket.off('you-are-blocked', onBlocked); socket.off('warning', onWarning);
       socket.off('message-blocked', onMessageBlocked); socket.off('outdated-client', onOutdated);
+      socket.off('report-action', onReportAction);
     };
   }, [socket, cleanup, createPeer, handleSignal, makeOffer, roomIdRef, startLocalStream, localStreamRef, isMobile, t, user]);
 
@@ -252,7 +261,14 @@ export default function Home() {
   };
 
   if (blockedUntil) {
-    return <BlockedScreen until={blockedUntil} onExpire={() => { setBlockedUntil(null); window.location.reload(); }} />;
+    return (
+      <BlockedScreen
+        until={blockedUntil}
+        reason={blockedReason}
+        permanent={blockedPermanent}
+        onExpire={() => { setBlockedUntil(null); window.location.reload(); }}
+      />
+    );
   }
 
   const loadingType = status === 'starting' ? 'starting' : status === 'waiting' ? 'waiting' : status === 'connecting' ? 'connecting' : null;
