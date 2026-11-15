@@ -100,6 +100,7 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [ageGateOpen, setAgeGateOpen] = useState(false);
+  const [setupPrompt, setSetupPrompt] = useState(false); // "select gender and country" message
   const [toast, setToast] = useState(null);
   const [onlineCount, setOnlineCount] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState(null);
@@ -330,13 +331,15 @@ export default function Home() {
 
   const handleStart = () => {
     if (!isAgeOk()) { setAgeGateOpen(true); return; }
+    setSetupPrompt(false);
     startChat();
   };
 
+  // 18+ confirm ke baad chat shuru nahi hoti: pehle gender aur country chunne ko kaho
   const confirmAge = () => {
     try { localStorage.setItem('rt_age_ok', '1'); } catch (e) {}
     setAgeGateOpen(false);
-    startChat();
+    setSetupPrompt(true);
   };
 
   const handleNext = () => {
@@ -459,7 +462,22 @@ export default function Home() {
                   </button>
                 )}
                 {loadingType && <LoadingOverlay type={loadingType} />}
-                {status === 'idle' && (
+
+                {/* Setup prompt: 18+ confirm ke baad dikhta hai */}
+                {status === 'idle' && setupPrompt && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 30 }}>
+                    <div style={{ textAlign: 'center', color: '#fff', background: 'rgba(0,0,0,0.6)', borderRadius: '16px', padding: '18px 22px', maxWidth: '340px', backdropFilter: 'blur(4px)' }}>
+                      <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>
+                        Please select your gender and country
+                      </div>
+                      <div style={{ fontSize: '13px', opacity: 0.85 }}>
+                        Use the buttons below, then press Start.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {status === 'idle' && !setupPrompt && (
                   <div className="idle-overlay">
                     <div className="idle-text">{t('chat.idle')}</div>
                   </div>
