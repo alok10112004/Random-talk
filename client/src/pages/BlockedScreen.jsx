@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const APPEAL_EMAIL ='alok10112004@gmail.com'; // 🔥 apna appeal email yahan daalo
+const APPEAL_EMAIL = 'randomtalk.support@gmail.com';
 
 const REASON_TEXT = {
   nudity: 'nudity or sexual content',

@@ -83,6 +83,20 @@ function resolveCountry(raw) {
   return { code: null, name: v };
 }
 
+// ---------- Gender helpers ----------
+const GENDERS = ['male', 'female', 'other'];
+
+function genderLine(g) {
+  if (g === 'male') return 'Stranger is male ♂';
+  if (g === 'female') return 'Stranger is female ♀';
+  if (g === 'other') return "Stranger's gender: other ⚧";
+  return null;
+}
+
+function readPref(key) {
+  try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+}
+
 export default function Home() {
   const socket = useSocket();
   const { user, loginAsGuest } = useAuth();
@@ -95,12 +109,16 @@ export default function Home() {
   const [showChat, setShowChat] = useState(
     typeof window !== 'undefined' && window.innerWidth > 768
   );
-  const [country, setCountry] = useState('ANY');
+  const [country, setCountry] = useState(() => readPref('rt_country') || 'ANY');
+  const [gender, setGender] = useState(() => {
+    const g = readPref('rt_gender');
+    return GENDERS.includes(g) ? g : '';
+  });
   const [interests, setInterests] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [ageGateOpen, setAgeGateOpen] = useState(false);
-  const [setupPrompt, setSetupPrompt] = useState(false); // "select gender and country" message
+  const [setupPrompt, setSetupPrompt] = useState(false);
   const [toast, setToast] = useState(null);
   const [onlineCount, setOnlineCount] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState(null);
@@ -109,7 +127,7 @@ export default function Home() {
   const [warning, setWarning] = useState(null);
   const [partnerCountry, setPartnerCountry] = useState(null);
   const [partnerHistory, setPartnerHistory] = useState([]);
-  const [countryBanner, setCountryBanner] = useState(null); // { text, code }
+  const [bannerLines, setBannerLines] = useState(null); // [{ text, code }]
   const partnerHistoryRef = useRef([]);
   const historyRoomRef = useRef(null);
   const currentPartnerRef = useRef(null);
@@ -119,6 +137,10 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth <= 768
   );
+
+  const countryChosen = !!country && country !== 'ANY';
+  const genderChosen = GENDERS.includes(gender);
+  const profileReady = countryChosen && genderChosen;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -137,43 +159,54 @@ export default function Home() {
     cleanup,
   } = useWebRTC(socket);
 
-  // Apni country server ko bhejo (reconnect par bhi dobara)
+  // Chuni hui country aur gender browser me yaad rakho
+  useEffect(() => {
+    try { if (countryChosen) localStorage.setItem('rt_country', country); } catch (e) {}
+  }, [country, countryChosen]);
+
+  useEffect(() => {
+    try { if (genderChosen) localStorage.setItem('rt_gender', gender); } catch (e) {}
+  }, [gender, genderChosen]);
+
+  // Country aur gender server ko bhejo (reconnect par bhi dobara)
   useEffect(() => {
     if (!socket) return undefined;
     const send = () => {
-      let value = 'ANY';
-      if (typeof country === 'string') {
-        value = country || 'ANY';
-      } else {
-        const r = resolveCountry(country);
-        value = r ? r.code || r.name : 'ANY';
-      }
-      socket.emit('set-country', { country: value });
+      socket.emit('set-country', { country: countryChosen ? country : 'ANY' });
+      socket.emit('set-gender', { gender: genderChosen ? gender : null });
     };
     send();
     socket.on('connect', send);
     return () => socket.off('connect', send);
-  }, [socket, country]);
+  }, [socket, country, gender, countryChosen, genderChosen]);
 
-  // ---- "Stranger is from ..." announcement ----
+  // ---- "Stranger is from ... / Stranger is male" announcement ----
   const clearAnnounce = () => {
     if (announceTimerRef.current) {
       clearTimeout(announceTimerRef.current);
       announceTimerRef.current = null;
     }
     announcedRoomRef.current = null;
-    setCountryBanner(null);
+    setBannerLines(null);
   };
 
-  // 1 second stranger screen par dikhao, phir chat box me line (jab tak baat chale)
-  const announcePartner = (roomId, info) => {
-    if (!info || announcedRoomRef.current === roomId) return;
+  // 1 second stranger screen par dikhao, phir chat box me lines (jab tak baat chale)
+  const announcePartner = (roomId, info, partnerGender) => {
+    if (announcedRoomRef.current === roomId) return;
+    const lines = [];
+    if (info) lines.push({ text: `Stranger is from ${info.name}`, code: info.code });
+    const g = genderLine(partnerGender);
+    if (g) lines.push({ text: g, code: null });
+    if (!lines.length) return;
+
     announcedRoomRef.current = roomId;
-    const chatText = `Stranger is from ${info.name}`;
-    setCountryBanner({ text: chatText, code: info.code });
+    setBannerLines(lines);
     announceTimerRef.current = setTimeout(() => {
-      setCountryBanner(null);
-      setMessages((prev) => [{ from: 'system', text: chatText, code: info.code }, ...prev]);
+      setBannerLines(null);
+      setMessages((prev) => [
+        ...lines.map((l) => ({ from: 'system', text: l.text, code: l.code })),
+        ...prev,
+      ]);
     }, 1000);
   };
 
@@ -238,7 +271,7 @@ export default function Home() {
     if (!socket) return;
     if (user?.uid) socket.emit('identify', { userId: user.uid });
     const onWaiting = () => { setStatus('waiting'); setPartnerCountry(null); };
-    const onMatched = async ({ roomId, partnerId, initiator, partnerCountry }) => {
+    const onMatched = async ({ roomId, partnerId, initiator, partnerCountry, partnerGender }) => {
       clearAnnounce();
       roomIdRef.current = roomId;
       currentPartnerRef.current = partnerId;
@@ -259,7 +292,7 @@ export default function Home() {
           addPartnerToHistory(partnerId);
         }
         setStatus('connected');
-        if (info) announcePartner(roomId, info);
+        announcePartner(roomId, info, partnerGender);
       });
       localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
       if (initiator) await makeOffer();
@@ -289,6 +322,11 @@ export default function Home() {
     const onMessageBlocked = () =>
       showToast('Message blocked: links and inappropriate words are not allowed.');
     const onOutdated = () => alert('This page is outdated. Please refresh it (Ctrl + Shift + R).');
+    const onProfileRequired = () => {
+      setStatus('idle');
+      setSetupPrompt(true);
+      showToast('Please select your gender and country first.');
+    };
 
     socket.on('waiting', onWaiting); socket.on('matched', onMatched); socket.on('signal', onSignal);
     socket.on('partner-left', onPartnerDisconnected);
@@ -298,6 +336,7 @@ export default function Home() {
     socket.on('you-are-blocked', onBlocked); socket.on('warning', onWarning);
     socket.on('message-blocked', onMessageBlocked); socket.on('outdated-client', onOutdated);
     socket.on('report-action', onReportAction);
+    socket.on('profile-required', onProfileRequired);
     return () => {
       socket.off('waiting', onWaiting); socket.off('matched', onMatched); socket.off('signal', onSignal);
       socket.off('partner-left', onPartnerDisconnected);
@@ -307,6 +346,7 @@ export default function Home() {
       socket.off('you-are-blocked', onBlocked); socket.off('warning', onWarning);
       socket.off('message-blocked', onMessageBlocked); socket.off('outdated-client', onOutdated);
       socket.off('report-action', onReportAction);
+      socket.off('profile-required', onProfileRequired);
     };
   }, [socket, cleanup, createPeer, handleSignal, makeOffer, roomIdRef, startLocalStream, localStreamRef, isMobile, t, user]);
 
@@ -326,20 +366,33 @@ export default function Home() {
       const localStream = await startLocalStream();
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
     } catch (err) { setStatus('idle'); alert('Camera access failed: ' + err.message); return; }
+    // Profile pehle bhejo, phir partner dhundo
+    socket.emit('set-country', { country });
+    socket.emit('set-gender', { gender });
     socket.emit('find-partner', { interests: getInterestsArray() });
   };
 
   const handleStart = () => {
     if (!isAgeOk()) { setAgeGateOpen(true); return; }
+    if (!profileReady) {
+      setSetupPrompt(true);
+      showToast('Please select your gender and country first.');
+      return;
+    }
     setSetupPrompt(false);
     startChat();
   };
 
-  // 18+ confirm ke baad chat shuru nahi hoti: pehle gender aur country chunne ko kaho
+  // 18+ confirm ke baad: agar gender/country nahi chune to pehle wo chunne ko kaho
   const confirmAge = () => {
     try { localStorage.setItem('rt_age_ok', '1'); } catch (e) {}
     setAgeGateOpen(false);
-    setSetupPrompt(true);
+    if (profileReady) {
+      setSetupPrompt(false);
+      startChat();
+    } else {
+      setSetupPrompt(true);
+    }
   };
 
   const handleNext = () => {
@@ -405,6 +458,12 @@ export default function Home() {
   const loadingType = status === 'starting' ? 'starting' : status === 'waiting' ? 'waiting' : status === 'connecting' ? 'connecting' : null;
   const hideControlBarMobile = isMobile && (status === 'waiting' || status === 'connecting' || status === 'connected');
 
+  const missing = [];
+  if (!genderChosen) missing.push('gender');
+  if (!countryChosen) missing.push('country');
+  const promptTitle = missing.length ? `Please select your ${missing.join(' and ')}` : 'All set!';
+  const promptSub = missing.length ? 'Use the buttons below, then press Start.' : 'Press Start to begin.';
+
   return (
     <div className="chat-page" style={{ background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fbc2eb 100%)' }}>
       <div className="chat-bg-orb chat-bg-orb-1" />
@@ -441,21 +500,27 @@ export default function Home() {
               <div className="chat-video-tile video-stranger-tile" style={{ position: 'relative' }}>
                 <video ref={remoteVideoRef} autoPlay playsInline />
                 <div className="chat-video-label">{t('chat.stranger')}</div>
-                {countryBanner && (
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', maxWidth: '90%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: 'rgba(0,0,0,0.65)', color: '#fff', padding: '10px 18px', borderRadius: '999px', fontSize: '15px', fontWeight: 600, zIndex: 40, backdropFilter: 'blur(4px)', pointerEvents: 'none' }}>
-                    <span>{countryBanner.text}</span>
-                    {countryBanner.code && (
-                      <img
-                        src={`https://flagcdn.com/w40/${countryBanner.code.toLowerCase()}.png`}
-                        alt={countryBanner.code}
-                        width="28"
-                        height="20"
-                        style={{ borderRadius: '3px', objectFit: 'cover' }}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    )}
+
+                {bannerLines && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', maxWidth: '90%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.65)', color: '#fff', padding: '12px 20px', borderRadius: '18px', fontSize: '15px', fontWeight: 600, zIndex: 40, backdropFilter: 'blur(4px)', pointerEvents: 'none', textAlign: 'center' }}>
+                    {bannerLines.map((l, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        <span>{l.text}</span>
+                        {l.code && (
+                          <img
+                            src={`https://flagcdn.com/w40/${l.code.toLowerCase()}.png`}
+                            alt={l.code}
+                            width="28"
+                            height="20"
+                            style={{ borderRadius: '3px', objectFit: 'cover' }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
+
                 {status === 'connected' && (
                   <button onClick={openReport} style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'rgba(0, 0, 0, 0.4)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }} title="Report User">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
@@ -463,16 +528,12 @@ export default function Home() {
                 )}
                 {loadingType && <LoadingOverlay type={loadingType} />}
 
-                {/* Setup prompt: 18+ confirm ke baad dikhta hai */}
+                {/* Setup prompt: gender aur country chunne ke liye */}
                 {status === 'idle' && setupPrompt && (
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 30 }}>
                     <div style={{ textAlign: 'center', color: '#fff', background: 'rgba(0,0,0,0.6)', borderRadius: '16px', padding: '18px 22px', maxWidth: '340px', backdropFilter: 'blur(4px)' }}>
-                      <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>
-                        Please select your gender and country
-                      </div>
-                      <div style={{ fontSize: '13px', opacity: 0.85 }}>
-                        Use the buttons below, then press Start.
-                      </div>
+                      <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>{promptTitle}</div>
+                      <div style={{ fontSize: '13px', opacity: 0.85 }}>{promptSub}</div>
                     </div>
                   </div>
                 )}
@@ -486,7 +547,18 @@ export default function Home() {
             </div>
           </SwipeWrapper>
           {!hideControlBarMobile && (
-            <ControlBar status={status} onStart={handleStart} onNext={handleNext} onStop={handleStop} onReport={openReport} country={country} onCountryChange={setCountry} />
+            <ControlBar
+              status={status}
+              onStart={handleStart}
+              onNext={handleNext}
+              onStop={handleStop}
+              onReport={openReport}
+              country={country}
+              onCountryChange={setCountry}
+              gender={gender}
+              onGenderChange={setGender}
+              ready={profileReady}
+            />
           )}
         </div>
         {showChat && (

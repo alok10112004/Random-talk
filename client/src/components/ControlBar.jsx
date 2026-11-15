@@ -10,10 +10,12 @@ export default function ControlBar({
   onStop,
   country,
   onCountryChange,
+  gender,
+  onGenderChange,
+  ready = true,
   onReport,
 }) {
   const { t } = useLanguage();
-  const [gender, setGender] = useState('male');
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -71,29 +73,44 @@ export default function ControlBar({
     transform: 'none',
   };
 
+  // Gender / country chune bina Start dhundhla dikhta hai (dabane par message aata hai)
+  const notReadyStyle = {
+    opacity: 0.6,
+    filter: 'grayscale(0.4)',
+  };
+
   return (
-    <div 
+    <div
       className="control-bar"
       style={{
         display: 'flex',
-        flexWrap: 'nowrap', 
+        flexWrap: 'nowrap',
         gap: '8px',
         justifyContent: 'center',
         padding: '10px',
         width: '100%',
         maxWidth: '900px',
         margin: '0 auto',
-        alignItems: 'stretch'
+        alignItems: 'stretch',
       }}
     >
-      {/* 1. Start Button - Hamesha dikhega */}
+      {/* 1. Start Button */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
-        {status === 'idle' && <button onClick={onStart} style={btnGreen}>▶ {t('control.start')}</button>}
+        {status === 'idle' && (
+          <button
+            onClick={onStart}
+            aria-disabled={!ready}
+            title={ready ? undefined : 'Select your gender and country first'}
+            style={ready ? btnGreen : { ...btnGreen, ...notReadyStyle }}
+          >
+            ▶ {t('control.start')}
+          </button>
+        )}
         {status === 'waiting' && <button disabled style={{ ...btnGreen, ...disabledStyle }}>▶ {t('control.start')}</button>}
         {status === 'connected' && <button onClick={onNext} style={btnGreen}>⏭ {t('control.next')}</button>}
       </div>
 
-      {/* 🔥 2. Stop Button - SIRF LAPTOP PAR (Mobile par nahi dikhega) */}
+      {/* 2. Stop Button: sirf laptop par */}
       {!isMobile && (
         <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
           <button onClick={onStop} disabled={status === 'idle'} style={{ ...btnOrange, ...(status === 'idle' ? disabledStyle : {}) }}>
@@ -102,17 +119,17 @@ export default function ControlBar({
         </div>
       )}
 
-      {/* 3. Country Button - Hamesha dikhega */}
+      {/* 3. Country Button */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
         <CountrySelector selected={country} onSelect={onCountryChange} />
       </div>
 
-      {/* 4. Gender Button - Hamesha dikhega */}
+      {/* 4. Gender Button */}
       <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
-        <GenderSelector selected={gender} onSelect={setGender} />
+        <GenderSelector selected={gender} onSelect={onGenderChange} />
       </div>
 
-      {/* 🔥 5. Report Button - SIRF LAPTOP PAR (Mobile par flag ke through hai) */}
+      {/* 5. Report Button: sirf laptop par */}
       {!isMobile && (
         <div style={{ flex: 1, display: 'flex', height: buttonHeight }}>
           <button onClick={onReport} style={btnRed}>🚩 {t('control.report')}</button>

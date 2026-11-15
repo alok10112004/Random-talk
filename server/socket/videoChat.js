@@ -16,6 +16,9 @@ let waiting = [];
 let onlineCount = 0;
 const ipSockets = new Map();
 const MAX_SOCKETS_PER_IP = 30;
+const SKIP_COOLDOWN_MS = 5000; // 0 karo to cooldown band
+
+const GENDERS = ['male', 'female', 'other'];
 
 const WARNINGS = {
   1: { message: 'Notice', detail: 'Be respectful.' },
@@ -30,16 +33,26 @@ function leaveAllRooms(s) {
   [...s.rooms].filter((r) => r !== s.id).forEach((r) => s.leave(r));
 }
 
+function skipped(socket, otherId) {
+  const s = socket.data.skip;
+  return !!s && s.id === otherId && s.until > Date.now();
+}
+
 // Country ab filter nahi hai: duniya ke kisi bhi user se match hota hai
 function tryMatch(socket) {
   removeWaiting(socket.id);
+  clearTimeout(socket.data.retryTimer);
+
   const idx = waiting.findIndex(
     (w) =>
       w.socket.connected &&
       w.socket.id !== socket.id &&
       socket.data.avoid !== w.socket.id &&
-      w.socket.data.avoid !== socket.id
+      w.socket.data.avoid !== socket.id &&
+      !skipped(socket, w.socket.id) &&
+      !skipped(w.socket, socket.id)
   );
+
   if (idx !== -1) {
     const partner = waiting[idx].socket;
     waiting.splice(idx, 1);
@@ -47,6 +60,20 @@ function tryMatch(socket) {
   } else {
     waiting.push({ socket });
     socket.emit('waiting');
+
+    // Cooldown khatam hone par ek baar dobara koshish karo
+    const s = socket.data.skip;
+    if (s && s.until > Date.now()) {
+      socket.data.retryTimer = setTimeout(() => {
+        if (
+          socket.connected &&
+          !socket.data.partner &&
+          waiting.some((w) => w.socket.id === socket.id)
+        ) {
+          tryMatch(socket);
+        }
+      }, s.until - Date.now() + 50);
+    }
   }
 }
 
@@ -93,12 +120,14 @@ function pairSockets(socketA, socketB) {
     partnerId: socketB.id,
     initiator: true,
     partnerCountry: socketB.data.country || 'ANY',
+    partnerGender: socketB.data.gender || null,
   });
   socketB.emit('matched', {
     roomId,
     partnerId: socketA.id,
     initiator: false,
     partnerCountry: socketA.data.country || 'ANY',
+    partnerGender: socketA.data.gender || null,
   });
   console.log(`✅ matched: ${socketA.id} <-> ${socketB.id}`);
 }
@@ -148,10 +177,12 @@ export default function videoChat(io, socket) {
 
   socket.data.ip = ip;
   socket.data.country = 'ANY';
+  socket.data.gender = null;
   socket.data.userId = null;
   socket.data.partner = null;
   socket.data.history = [];
   socket.data.avoid = null;
+  socket.data.skip = null;
 
   if (!isValidDeviceId(deviceId)) {
     socket.emit('outdated-client');
@@ -195,8 +226,21 @@ export default function videoChat(io, socket) {
     socket.data.country = typeof country === 'string' ? country.slice(0, 40) : 'ANY';
   });
 
+  socket.on('set-gender', ({ gender } = {}) => {
+    socket.data.gender = GENDERS.includes(gender) ? gender : null;
+  });
+
   socket.on('find-partner', () => {
     if (!limits.find()) return;
+
+    // Gender aur country ke bina chat shuru nahi hogi
+    const g = socket.data.gender;
+    const c = socket.data.country;
+    if (!GENDERS.includes(g) || !c || c === 'ANY') {
+      socket.emit('profile-required');
+      return;
+    }
+
     const b = getBanInfo(socket.data.deviceId, socket.data.ip);
     if (b) return kick(io, socket, b);
     if (socket.data.partner) return;
@@ -211,11 +255,14 @@ export default function videoChat(io, socket) {
 
   socket.on('next', () => {
     if (!limits.find()) return;
+    const prev = socket.data.partner;
+    if (prev) socket.data.skip = { id: prev.id, until: Date.now() + SKIP_COOLDOWN_MS };
     detach(io, socket);
     tryMatch(socket);
   });
 
   socket.on('stop', () => {
+    clearTimeout(socket.data.retryTimer);
     removeWaiting(socket.id);
     detach(io, socket);
   });
@@ -288,6 +335,7 @@ export default function videoChat(io, socket) {
   });
 
   socket.on('disconnect', () => {
+    clearTimeout(socket.data.retryTimer);
     removeWaiting(socket.id);
     const p = socket.data.partner;
     socket.data.partner = null;

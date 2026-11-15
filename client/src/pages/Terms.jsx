@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-const CONTACT_EMAIL = 'alok10112004@gmail.com'; // 
+const CONTACT_EMAIL = 'randomtalk.support@gmail.com';
 const LAST_UPDATED = 'November 2026';
-const GOVERNING_LAW = 'India'; // 
+const GOVERNING_LAW = 'India'; // lawyer se confirm karwa lena
 
 const SECTIONS = [
   {
@@ -21,7 +21,7 @@ const SECTIONS = [
   {
     title: '3. The Service',
     paragraphs: [
-      'Random Talk pairs you with another user at random for a live video and text conversation. We do not create, select, or review the content of conversations, and we do not verify the identity, age, or location of any user. The country shown for a user is selected by that user and may not be accurate.',
+      'Random Talk pairs you with another user at random for a live video and text conversation. We do not create, select, or review the content of conversations, and we do not verify the identity, age, gender, or location of any user. The country and gender shown for a user are selected by that user and may not be accurate.',
       'You use the Service at your own risk and are responsible for your own conduct and for the decisions you make when interacting with strangers.',
     ],
   },
@@ -80,7 +80,7 @@ const SECTIONS = [
   {
     title: '9. Third-Party Services',
     paragraphs: [
-      'The Service relies on third-party providers for functions such as hosting, relay (TURN) connections, databases, authentication, and content moderation. We are not responsible for the acts or omissions of these providers. Your use of the Service is also subject to our Privacy Policy.',
+      'The Service relies on third-party providers for functions such as hosting, relay (TURN) connections, databases, authentication, analytics, and content moderation. We are not responsible for the acts or omissions of these providers. Your use of the Service is also subject to our Privacy Policy.',
     ],
   },
   {

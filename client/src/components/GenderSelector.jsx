@@ -20,7 +20,8 @@ export default function GenderSelector({ selected, onSelect }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const current = OPTIONS.find((o) => o.id === selected) || OPTIONS[0];
+  // Jab tak user ne kuch chuna nahi, "Gender" dikhao (Male nahi)
+  const current = OPTIONS.find((o) => o.id === selected) || null;
 
   const buttonStyle = {
     width: '100%',
@@ -46,29 +47,30 @@ export default function GenderSelector({ selected, onSelect }) {
   };
 
   return (
-    <div 
-      ref={dropdownRef} 
-      className="gender-selector-wrapper" 
-      style={{ position: 'relative', width: '100%', height: '100%' }} // 🔥 FIX: height 100%
+    <div
+      ref={dropdownRef}
+      className="gender-selector-wrapper"
+      style={{ position: 'relative', width: '100%', height: '100%' }}
     >
       <button onClick={() => setOpen(!open)} style={buttonStyle}>
         <span style={{ fontSize: '20px', color: '#fff', fontWeight: 700 }}>
-          {current.symbol}
+          {current ? current.symbol : '👤'}
         </span>
-        <span>{t(current.labelKey)}</span>
+        <span>{current ? t(current.labelKey) : 'Gender'}</span>
       </button>
 
       {open && (
         <div style={{
-            position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
-            width: '200px', background: '#131823', border: '1px solid rgba(96, 165, 250, 0.3)',
-            borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden', zIndex: 100,
+          position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
+          width: '200px', background: '#131823', border: '1px solid rgba(96, 165, 250, 0.3)',
+          borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden', zIndex: 100,
         }}>
           {OPTIONS.map((o) => {
             const isSelected = selected === o.id;
             return (
               <button
-                key={o.id} onClick={() => { onSelect(o.id); setOpen(false); }}
+                key={o.id}
+                onClick={() => { onSelect(o.id); setOpen(false); }}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
                   background: isSelected ? 'rgba(96, 165, 250, 0.2)' : 'transparent',

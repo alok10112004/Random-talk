@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const CONTACT_EMAIL = 'alok10112004@gmail.com';
+const CONTACT_EMAIL = 'randomtalk.support@gmail.com';
 const LAST_UPDATED = 'November 2026';
 
 const SECTIONS = [
@@ -19,6 +19,7 @@ const SECTIONS = [
       'Technical data: your IP address, browser type, and device information, which are processed to establish connections, prevent abuse, and keep the Service secure.',
       'Device identifier: a random identifier generated in your browser and stored in local storage. It is used to enforce bans and prevent repeat abuse. It does not contain your name or any personal details.',
       'Preferences: choices such as your selected country and your confirmation that you are 18 or older, stored in your browser.',
+      'Profile selections: the country and gender you choose are stored in your browser and are shown to the person you are matched with. They are self-reported and not verified.',
       'Safety and moderation records: if a report is filed against a device, or a ban is applied, we store the device identifier, IP address, ban duration, reason, and a count of previous violations.',
       'Website analytics: aggregated, cookie-free statistics such as page views, country, device type, and referring site.',
     ],
