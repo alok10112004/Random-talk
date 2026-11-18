@@ -7,6 +7,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import TopBar from '../components/TopBar';
 import ControlBar from '../components/ControlBar';
 import ChatPanel from '../components/ChatPanel';
+import MobileChat from '../components/MobileChat';
 import HelpModal from '../components/HelpModal';
 import ReportModal from '../components/ReportModal';
 import WarningModal from '../components/WarningModal';
@@ -564,10 +565,22 @@ export default function Home() {
             />
           )}
         </div>
-        {showChat && (
+
+        {/* Laptop: side panel */}
+        {showChat && !isMobile && (
           <ChatPanel messages={messages} onSend={handleSendMessage} connected={status === 'connected'} onClose={() => setShowChat(false)} isMobile={isMobile} partnerCountry={partnerCountry} onReportAbuse={openReport} />
         )}
       </div>
+
+      {/* Phone: neeche wali half me chat, upar stranger ki video dikhti rahe */}
+      {showChat && isMobile && !reportOpen && !helpOpen && !ageGateOpen && (
+        <MobileChat
+          messages={messages}
+          onSend={handleSendMessage}
+          connected={status === 'connected'}
+          onClose={() => setShowChat(false)}
+        />
+      )}
 
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} onSubmit={handleReportSubmit} partners={partnerHistory} currentPartnerId={currentPartnerRef.current} />
