@@ -16,6 +16,29 @@ import SwipeWrapper from '../components/SwipeWrapper';
 import BlockedScreen from './BlockedScreen';
 import '../chat-mobile.css';
 
+// ---------- Fullscreen helpers (sirf phone par, button dabane par) ----------
+function enterFullscreen() {
+  try {
+    if (window.innerWidth > 768) return;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (!req) return; // iPhone Safari par ye support nahi hai
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    const p = req.call(el, { navigationUI: 'hide' });
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (e) { /* ignore */ }
+}
+
+function exitFullscreen() {
+  try {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if (!exit) return;
+    if (!(document.fullscreenElement || document.webkitFullscreenElement)) return;
+    const p = exit.call(document);
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (e) { /* ignore */ }
+}
+
 // ---------- Country helpers ----------
 const NO_COUNTRY = ['ANY', 'Any', 'any', 'Unknown', 'unknown', ''];
 
@@ -149,6 +172,9 @@ export default function Home() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Page chhodte hi (jaise Privacy page par jaane par) full screen band
+  useEffect(() => () => exitFullscreen(), []);
 
   const {
     roomIdRef,
@@ -315,6 +341,7 @@ export default function Home() {
     const onReportReceived = () => showToast(t('report.toast'));
     const onOnlineCount = (count) => setOnlineCount(count);
     const onBlocked = ({ until, reason, permanent }) => {
+      exitFullscreen();
       setBlockedReason(reason || null);
       setBlockedPermanent(!!permanent);
       setBlockedUntil(until);
@@ -325,6 +352,7 @@ export default function Home() {
       showToast('Message blocked: links and inappropriate words are not allowed.');
     const onOutdated = () => alert('This page is outdated. Please refresh it (Ctrl + Shift + R).');
     const onProfileRequired = () => {
+      exitFullscreen();
       setStatus('idle');
       setSetupPrompt(true);
       showToast('Please select your gender and country first.');
@@ -359,15 +387,20 @@ export default function Home() {
   };
 
   const startChat = async () => {
-    if (!socket) return;
+    if (!socket) { exitFullscreen(); return; }
     if (!user) {
-      try { await loginAsGuest(); } catch (err) { alert('Guest login failed.'); return; }
+      try { await loginAsGuest(); } catch (err) { exitFullscreen(); alert('Guest login failed.'); return; }
     }
     setStatus('starting');
     try {
       const localStream = await startLocalStream();
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
-    } catch (err) { setStatus('idle'); alert('Camera access failed: ' + err.message); return; }
+    } catch (err) {
+      exitFullscreen();
+      setStatus('idle');
+      alert('Camera access failed: ' + err.message);
+      return;
+    }
     // Profile pehle bhejo, phir partner dhundo
     socket.emit('set-country', { country });
     socket.emit('set-gender', { gender });
@@ -382,6 +415,7 @@ export default function Home() {
       return;
     }
     setSetupPrompt(false);
+    enterFullscreen(); // button click ke turant baad (await se pehle) hi chalna chahiye
     startChat();
   };
 
@@ -391,6 +425,7 @@ export default function Home() {
     setAgeGateOpen(false);
     if (profileReady) {
       setSetupPrompt(false);
+      enterFullscreen();
       startChat();
     } else {
       setSetupPrompt(true);
@@ -408,6 +443,7 @@ export default function Home() {
   };
 
   const handleStop = () => {
+    exitFullscreen();
     clearAnnounce();
     currentPartnerRef.current = null;
     cleanup();
