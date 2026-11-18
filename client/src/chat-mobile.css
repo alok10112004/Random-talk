@@ -10,7 +10,11 @@
 
 @media (max-width: 768px) {
   .chat-page {
-    --rt-topbar: 64px; /* top bar ki height, zarurat ho to badlo */
+    /* Status bar / notch ki jagah (normal mode me) */
+    --rt-safe-top: env(safe-area-inset-top, 0px);
+    /* Top bar ki height */
+    --rt-topbar: 64px;
+
     position: fixed !important;
     inset: 0 !important;
     width: 100% !important;
@@ -20,6 +24,18 @@
     padding: 0 !important;
     display: block !important;
     overflow: hidden !important;
+  }
+
+  /* 🔥 FULL SCREEN me top bar ko upar kheencho.
+     Do alag rule hain kyunki purane Chrome/Samsung browsers prefix wala naam use karte hain.
+     Upar kitna chahiye: --rt-safe-top badlo (0px = bilkul upar, 6px = thoda gap). */
+  html:fullscreen .chat-page {
+    --rt-safe-top: 4px;
+    --rt-topbar: 56px;
+  }
+  html:-webkit-full-screen .chat-page {
+    --rt-safe-top: 4px;
+    --rt-topbar: 56px;
   }
 
   .chat-page .chat-bg-orb {
@@ -34,7 +50,7 @@
     left: 0;
     right: 0;
     z-index: 45;
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: var(--rt-safe-top);
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
     pointer-events: none;
   }
@@ -48,6 +64,18 @@
   .chat-page .chat-topbar-slot button,
   .chat-page .chat-topbar-slot a {
     pointer-events: auto;
+  }
+
+  /* Full screen me top bar ke andar ki extra upar-neeche jagah bhi kam karo */
+  html:fullscreen .chat-page .chat-topbar-slot > * {
+    margin-top: 0 !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+  html:-webkit-full-screen .chat-page .chat-topbar-slot > * {
+    margin-top: 0 !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
   }
 
   /* Poori screen ka layout */
@@ -118,10 +146,10 @@
 
   /* Label aur Report button top bar ke neeche */
   .chat-page .video-stranger-tile .chat-video-label {
-    top: calc(env(safe-area-inset-top, 0px) + var(--rt-topbar)) !important;
+    top: calc(var(--rt-safe-top) + var(--rt-topbar)) !important;
   }
   .chat-page .video-stranger-tile > button[title="Report User"] {
-    top: calc(env(safe-area-inset-top, 0px) + var(--rt-topbar)) !important;
+    top: calc(var(--rt-safe-top) + var(--rt-topbar)) !important;
   }
 
   /* STOP button neeche ke home bar se door */
@@ -148,7 +176,7 @@
     display: none !important;
   }
 
-  /* Chat panel: poori screen */
+  /* Chat panel (agar purana wala dikhe to): poori screen */
   .chat-page .chat-panel {
     position: fixed !important;
     inset: 0 !important;
