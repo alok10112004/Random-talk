@@ -13,6 +13,7 @@ import WarningModal from '../components/WarningModal';
 import LoadingOverlay from '../components/LoadingOverlay';
 import SwipeWrapper from '../components/SwipeWrapper';
 import BlockedScreen from './BlockedScreen';
+import '../chat-mobile.css';
 
 // ---------- Country helpers ----------
 const NO_COUNTRY = ['ANY', 'Any', 'any', 'Unknown', 'unknown', ''];
@@ -469,7 +470,9 @@ export default function Home() {
       <div className="chat-bg-orb chat-bg-orb-1" />
       <div className="chat-bg-orb chat-bg-orb-2" />
 
-      <TopBar status={status} onlineCount={onlineCount} onHelp={() => setHelpOpen(true)} onToggleChat={() => setShowChat((s) => !s)} chatOpen={showChat} />
+      <div className="chat-topbar-slot">
+        <TopBar status={status} onlineCount={onlineCount} onHelp={() => setHelpOpen(true)} onToggleChat={() => setShowChat((s) => !s)} chatOpen={showChat} />
+      </div>
 
       <div className="chat-layout">
         <div className="chat-videos-wrap" style={{ position: 'relative' }}>
@@ -596,8 +599,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Privacy & Terms Links */}
-      <div className="w-full text-center mt-6 mb-4 flex justify-center items-center gap-3 text-sm z-10 relative">
+      {/* Privacy & Terms Links (phone par chhupe rehte hain) */}
+      <div className="chat-footer-links w-full text-center mt-6 mb-4 flex justify-center items-center gap-3 text-sm z-10 relative">
         <Link to="/privacy" className="text-pink-200 hover:text-white underline transition-colors">
           Privacy Policy
         </Link>

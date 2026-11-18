@@ -1,0 +1,174 @@
+/* ============================================================
+   Chat page: mobile full-screen layout
+   Sirf .chat-page par lagta hai, landing page par asar nahi.
+   ============================================================ */
+
+/* Top bar ka wrapper: laptop par kuch nahi karta */
+.chat-topbar-slot {
+  display: contents;
+}
+
+@media (max-width: 768px) {
+  .chat-page {
+    --rt-topbar: 64px; /* top bar ki height, zarurat ho to badlo */
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+  }
+
+  .chat-page .chat-bg-orb {
+    display: none !important;
+  }
+
+  /* Top bar: video ke upar transparent */
+  .chat-page .chat-topbar-slot {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 45;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+    pointer-events: none;
+  }
+  .chat-page .chat-topbar-slot > * {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .chat-page .chat-topbar-slot button,
+  .chat-page .chat-topbar-slot a {
+    pointer-events: auto;
+  }
+
+  /* Poori screen ka layout */
+  .chat-page .chat-layout {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .chat-page .chat-videos-wrap {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* SwipeWrapper ka root (ControlBar ke alawa) */
+  .chat-page .chat-videos-wrap > *:not(.control-bar) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Do video tile: Stranger upar, You neeche, bina gap ke */
+  .chat-page .chat-videos {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .chat-page .chat-video-tile {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+  .chat-page .video-stranger-tile {
+    order: 1 !important;
+  }
+  .chat-page .video-self-tile {
+    order: 2 !important;
+  }
+  .chat-page .chat-video-tile video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  /* Label aur Report button top bar ke neeche */
+  .chat-page .video-stranger-tile .chat-video-label {
+    top: calc(env(safe-area-inset-top, 0px) + var(--rt-topbar)) !important;
+  }
+  .chat-page .video-stranger-tile > button[title="Report User"] {
+    top: calc(env(safe-area-inset-top, 0px) + var(--rt-topbar)) !important;
+  }
+
+  /* STOP button neeche ke home bar se door */
+  .chat-page .video-self-tile > button {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Start / Country / Gender: neeche floating */
+  .chat-page .chat-videos-wrap > .control-bar {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 45 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0)) !important;
+  }
+
+  /* Neeche ke Privacy / Terms links phone par chhupao */
+  .chat-page .chat-footer-links {
+    display: none !important;
+  }
+
+  /* Chat panel: poori screen */
+  .chat-page .chat-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    z-index: 200 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .chat-page .chat-panel .chat-messages {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+  .chat-page .chat-panel .chat-input-form {
+    flex: 0 0 auto !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
