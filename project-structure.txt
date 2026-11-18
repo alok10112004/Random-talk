@@ -17,7 +17,7 @@ client\README.md
 client\tailwind.config.js
 client\vercel.json
 client\vite.config.js
-client\public\bg-pink.png
+client\public\bg-pink.webp
 client\public\favicon.svg
 client\public\icons.svg
 client\public\logo.png

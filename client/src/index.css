@@ -2096,7 +2096,7 @@ body {
 .pink-bg {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url('/bg-pink.png') !important; /* 👈 Tumhari image */
+  background-image: url('/bg-pink.webp') !important; /* 👈 Tumhari image */
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -2343,7 +2343,7 @@ body {
   min-height: 0 !important;
 }
 body {
-  background-image: url('/bg-pink.png') !important;
+  background-image: url('/bg-pink.webp') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;

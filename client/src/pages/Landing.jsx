@@ -47,7 +47,7 @@ export default function Landing() {
           left: 0,
           width: '100%',
           height: '100dvh',
-          backgroundImage: "url('/bg-pink.png')",
+          backgroundImage: "url('/bg-pink.webp')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           zIndex: 1,
