@@ -16,14 +16,23 @@ import SwipeWrapper from '../components/SwipeWrapper';
 import BlockedScreen from './BlockedScreen';
 import '../chat-mobile.css';
 
-// ---------- Fullscreen helpers (sirf phone par, button dabane par) ----------
+// ---------- Fullscreen helpers (sirf phone par) ----------
+function inFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function canFullscreen() {
+  const el = document.documentElement;
+  return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen);
+}
+
 function enterFullscreen() {
   try {
     if (window.innerWidth > 768) return;
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
     if (!req) return; // iPhone Safari par ye support nahi hai
-    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    if (inFullscreen()) return;
     const p = req.call(el, { navigationUI: 'hide' });
     if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch (e) { /* ignore */ }
@@ -33,10 +42,19 @@ function exitFullscreen() {
   try {
     const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
     if (!exit) return;
-    if (!(document.fullscreenElement || document.webkitFullscreenElement)) return;
+    if (!inFullscreen()) return;
     const p = exit.call(document);
     if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch (e) { /* ignore */ }
+}
+
+// Camera/mic ki permission pehle hi maang lo (full screen se pehle), phir camera band kar do
+async function warmUpCameraPermission() {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    s.getTracks().forEach((t) => t.stop());
+  } catch (e) { /* user ne mana kiya: Start dabane par dobara poochega */ }
 }
 
 // ---------- Country helpers ----------
@@ -153,12 +171,15 @@ export default function Home() {
   const [partnerCountry, setPartnerCountry] = useState(null);
   const [partnerHistory, setPartnerHistory] = useState([]);
   const [bannerLines, setBannerLines] = useState(null); // [{ text, code }]
+  const [facing, setFacing] = useState('user'); // 'user' = front, 'environment' = back
+  const [fsHint, setFsHint] = useState(false); // "Tap for full screen" button
   const partnerHistoryRef = useRef([]);
   const historyRoomRef = useRef(null);
   const currentPartnerRef = useRef(null);
   const reportFrameRef = useRef(null);
   const announceTimerRef = useRef(null);
   const announcedRoomRef = useRef(null);
+  const flipBusyRef = useRef(false);
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth <= 768
   );
@@ -175,6 +196,24 @@ export default function Home() {
 
   // Page chhodte hi (jaise Privacy page par jaane par) full screen band
   useEffect(() => () => exitFullscreen(), []);
+
+  // Full screen ho jaye to "Tap for full screen" button hata do
+  useEffect(() => {
+    const onChange = () => { if (inFullscreen()) setFsHint(false); };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+
+  // Button 12 second baad apne aap hat jaye
+  useEffect(() => {
+    if (!fsHint) return undefined;
+    const id = setTimeout(() => setFsHint(false), 12000);
+    return () => clearTimeout(id);
+  }, [fsHint]);
 
   const {
     roomIdRef,
@@ -386,6 +425,51 @@ export default function Home() {
     try { return localStorage.getItem('rt_age_ok') === '1'; } catch (e) { return false; }
   };
 
+  // ---- Camera flip (front <-> back) ----
+  const flipCamera = async () => {
+    if (flipBusyRef.current) return;
+    const cur = localStreamRef.current;
+    if (!cur) { showToast('Camera is not ready yet.'); return; }
+    flipBusyRef.current = true;
+
+    const next = facing === 'user' ? 'environment' : 'user';
+    const sender = pcRef?.current?.getSenders?.().find((s) => s.track && s.track.kind === 'video');
+
+    // Kai phones me do camera ek saath nahi khulte, isliye pehle purana band karo
+    cur.getVideoTracks().forEach((tr) => { tr.stop(); cur.removeTrack(tr); });
+
+    const open = (mode) =>
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: mode }, width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+
+    let usedMode = next;
+    let stream = null;
+    try {
+      stream = await open(next);
+    } catch (e) {
+      try { stream = await open(facing); usedMode = facing; } catch (e2) { stream = null; }
+    }
+
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      cur.addTrack(track);
+      if (sender) { try { await sender.replaceTrack(track); } catch (e) { /* ignore */ } }
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+        localVideoRef.current.srcObject = cur;
+        const p = localVideoRef.current.play?.();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+      setFacing(usedMode);
+      if (usedMode !== next) showToast('Could not switch the camera on this phone.');
+    } else {
+      showToast('Could not switch the camera.');
+    }
+    flipBusyRef.current = false;
+  };
+
   const startChat = async () => {
     if (!socket) { exitFullscreen(); return; }
     if (!user) {
@@ -401,6 +485,9 @@ export default function Home() {
       alert('Camera access failed: ' + err.message);
       return;
     }
+    // Agar popup ki wajah se full screen band ho gayi, to ek tap ka button dikhao
+    if (window.innerWidth <= 768 && canFullscreen() && !inFullscreen()) setFsHint(true);
+
     // Profile pehle bhejo, phir partner dhundo
     socket.emit('set-country', { country });
     socket.emit('set-gender', { gender });
@@ -419,7 +506,7 @@ export default function Home() {
     startChat();
   };
 
-  // 18+ confirm ke baad: agar gender/country nahi chune to pehle wo chunne ko kaho
+  // 18+ confirm ke baad: gender/country chunne se pehle camera ki permission maang lo
   const confirmAge = () => {
     try { localStorage.setItem('rt_age_ok', '1'); } catch (e) {}
     setAgeGateOpen(false);
@@ -429,6 +516,7 @@ export default function Home() {
       startChat();
     } else {
       setSetupPrompt(true);
+      warmUpCameraPermission();
     }
   };
 
@@ -444,6 +532,8 @@ export default function Home() {
 
   const handleStop = () => {
     exitFullscreen();
+    setFsHint(false);
+    setFacing('user');
     clearAnnounce();
     currentPartnerRef.current = null;
     cleanup();
@@ -511,6 +601,19 @@ export default function Home() {
         <TopBar status={status} onlineCount={onlineCount} onHelp={() => setHelpOpen(true)} onToggleChat={() => setShowChat((s) => !s)} chatOpen={showChat} />
       </div>
 
+      {/* Full screen ka button (sirf tab dikhta hai jab popup ne full screen tod di ho) */}
+      {fsHint && isMobile && (
+        <button
+          onClick={() => { enterFullscreen(); setFsHint(false); }}
+          style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 74px)', left: '50%', transform: 'translateX(-50%)', zIndex: 60, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.65)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '999px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(4px)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+          Tap for full screen
+        </button>
+      )}
+
       <div className="chat-layout">
         <div className="chat-videos-wrap" style={{ position: 'relative' }}>
           <SwipeWrapper onSwipeRight={handleNext} enabled={isMobile && status === 'connected'}>
@@ -519,6 +622,28 @@ export default function Home() {
               <div className="chat-video-tile video-self-tile" style={{ position: 'relative' }}>
                 <video ref={localVideoRef} autoPlay muted playsInline />
                 <div className="chat-video-label">{t('chat.you')}</div>
+
+                {/* Camera flip: apne camera ke upar-right corner me (sirf phone par) */}
+                {isMobile && status !== 'idle' && (
+                  <div className="flip-cam-wrap" style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 50 }}>
+                    <button
+                      type="button"
+                      onClick={flipCamera}
+                      aria-label="Switch camera"
+                      title="Switch camera"
+                      style={{ width: '42px', height: '42px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.45)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+                        <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="m18 22-3-3 3-3" />
+                        <path d="m6 2 3 3-3 3" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
                 {isMobile && (status === 'connected' || status === 'waiting') && (
                   <button onClick={handleStop} style={{ position: 'absolute', bottom: '12px', right: '12px', backgroundColor: 'rgba(239, 68, 68, 0.9)', color: 'white', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '20px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', zIndex: 50, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', backdropFilter: 'blur(4px)', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /></svg> STOP
