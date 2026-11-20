@@ -1,4 +1,35 @@
+import { useEffect, useState } from 'react';
+
 export default function VideoTile({ videoRef, label, muted, className = '', status, onStop, onReport }) {
+  const [isFront, setIsFront] = useState(true);
+
+  // Sirf apne (local) video ke liye: front/back camera detect karo
+  useEffect(() => {
+    if (!muted) return;
+
+    const check = () => {
+      const stream = videoRef?.current?.srcObject;
+      const track = stream?.getVideoTracks?.()[0];
+      if (!track) return;
+
+      const facing = track.getSettings?.().facingMode;
+      const lbl = (track.label || '').toLowerCase();
+
+      let front = true;
+      if (facing) front = facing === 'user';
+      else if (/back|rear|environment/.test(lbl)) front = false;
+
+      setIsFront((prev) => (prev === front ? prev : front));
+    };
+
+    check();
+    const id = setInterval(check, 500); // camera switch hone par apne aap update
+    return () => clearInterval(id);
+  }, [muted, videoRef]);
+
+  // Local: sirf front camera pe mirror. Stranger: kabhi mirror nahi.
+  const mirror = muted && isFront;
+
   return (
     <div
       className={`relative bg-black rounded-xl overflow-hidden border border-[#1f2534] ${className}`}
@@ -9,6 +40,7 @@ export default function VideoTile({ videoRef, label, muted, className = '', stat
         muted={muted}
         playsInline
         className="w-full h-full object-cover"
+        style={{ transform: mirror ? 'scaleX(-1)' : 'none' }}
       />
 
       {/* Label (You / Stranger) */}
@@ -17,14 +49,12 @@ export default function VideoTile({ videoRef, label, muted, className = '', stat
       </div>
 
       {/* 🔴 STRANGER PR FLAG BUTTON */}
-      {/* Agar 'muted' false hai (matlab stranger ka video hai) aur status 'connected' hai, tabhi flag dikhega */}
       {!muted && status === 'connected' && onReport && (
-        <button 
+        <button
           onClick={onReport}
           className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white rounded-md transition-all z-20"
           title="Report Stranger"
         >
-          {/* Simple SVG Flag Icon */}
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
             <line x1="4" y1="22" x2="4" y2="15"></line>
@@ -33,9 +63,8 @@ export default function VideoTile({ videoRef, label, muted, className = '', stat
       )}
 
       {/* ⏹️ 'YOU' PR STOP BUTTON */}
-      {/* Agar 'muted' true hai (matlab apna video hai) aur status 'connected' ya 'waiting' hai, tabhi stop dikhega */}
       {muted && (status === 'connected' || status === 'waiting') && onStop && (
-        <button 
+        <button
           onClick={onStop}
           className="absolute bottom-2 right-2 px-2 py-1 bg-red-500/80 hover:bg-red-600 text-white text-[10px] font-bold rounded-md backdrop-blur-sm transition-all z-20 flex items-center gap-1"
           title="Stop Camera"
